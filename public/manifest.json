@@ -1,0 +1,125 @@
+{
+  "name": "Voice Agent Studio",
+  "short_name": "VoiceStudio",
+  "description": "Professional multi-voice provider AI assistant platform with RAG capabilities, real-time voice processing, and document management",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#667eea",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en",
+  "dir": "ltr",
+  "categories": ["productivity", "business", "utilities", "ai", "voice"],
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable any"
+    },
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "monochrome"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "Access your voice agent dashboard",
+      "url": "/dashboard",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Agent Designer",
+      "short_name": "Designer",
+      "description": "Create and customize voice agents",
+      "url": "/dashboard/agent-designer",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Documents",
+      "short_name": "Docs",
+      "description": "Manage RAG documents and knowledge base",
+      "url": "/dashboard/documents",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Voice Test",
+      "short_name": "Voice",
+      "description": "Test voice interactions",
+      "url": "/dashboard/agent-designer?tab=voice",
+      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Voice Agent Studio Dashboard - Multi-provider voice interface with real-time processing"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Voice Agent Studio Mobile - Touch-optimized voice controls and document management"
+    }
+  ],
+  "features": [
+    "Cross Platform",
+    "fast",
+    "simple",
+    "offline",
+    "voice-enabled",
+    "ai-powered",
+    "real-time"
+  ],
+  "edge_side_panel": {
+    "preferred_width": 420
+  },
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+voiceagent",
+      "url": "/a/%s"
+    }
+  ],
+  "file_handlers": [
+    {
+      "action": "/dashboard/documents",
+      "accept": {
+        "application/pdf": [".pdf"],
+        "text/plain": [".txt"],
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document": [".docx"],
+        "text/markdown": [".md"]
+      }
+    }
+  ],
+  "share_target": {
+    "action": "/dashboard/documents",
+    "method": "POST",
+    "enctype": "multipart/form-data",
+    "params": {
+      "files": [
+        {
+          "name": "file",
+          "accept": ["application/pdf", "text/plain", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"]
+        }
+      ]
+    }
+  }
+}
