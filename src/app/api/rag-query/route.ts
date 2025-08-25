@@ -53,8 +53,12 @@ export async function POST(request: NextRequest) {
           limit: 3
         });
         
-        // Filter for highly relevant documents
-        const topDocuments = relevantDocuments.filter(doc => doc.similarity > 0.7);
+        // Filter for relevant documents with a slightly lower threshold to improve recall
+        let topDocuments = relevantDocuments.filter(doc => doc.similarity >= 0.5);
+        // If nothing passes the threshold, take the top 1 as a fallback
+        if (topDocuments.length === 0 && relevantDocuments.length > 0) {
+          topDocuments = [relevantDocuments[0]];
+        }
         
         if (topDocuments.length > 0) {
           relevantContext = topDocuments
@@ -76,8 +80,14 @@ export async function POST(request: NextRequest) {
       ? `You are ${agentName || 'a helpful assistant'}. ${instructions}`
       : `You are ${agentName || 'a helpful assistant'}. Be helpful, concise, and friendly.`;
 
+    let sources: string[] = [];
     if (relevantContext) {
-      systemMessage += `\n\nYou have access to the following relevant documents that may help answer the user's question:\n\n${relevantContext}\n\nUse this information to provide accurate and helpful responses. If the documents contain relevant information, reference them in your answer.`;
+      // Build a list of sources from the context block
+      try {
+        const lines = relevantContext.split('\n').filter(l => l.startsWith('Document: '));
+        sources = lines.map(l => l.replace('Document: ', '').trim());
+      } catch {}
+      systemMessage += `\n\nYou have access to the following relevant documents that may help answer the user's question:\n\n${relevantContext}\n\nWhen you use information from these documents, include a short citation and end your answer with a 'Sources:' list of the document names you used.`;
     }
 
     // Get response from OpenAI with RAG context
@@ -107,6 +117,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       response,
       hasContext,
+      sources,
       usage: completion.usage
     });
 

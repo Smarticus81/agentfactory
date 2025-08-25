@@ -88,7 +88,13 @@ export const searchDocuments = query({
     
     // Calculate cosine similarity and sort
     const documentsWithSimilarity = documents.map(doc => {
-      const similarity = cosineSimilarity(args.queryEmbedding, doc.embeddings);
+      // Ensure same length by trimming/padding the shorter vector as a defensive measure
+      const a = args.queryEmbedding;
+      const b = doc.embeddings || [];
+      const len = Math.min(a.length, b.length);
+      const aTrim = len > 0 ? a.slice(0, len) : a;
+      const bTrim = len > 0 ? b.slice(0, len) : b;
+      const similarity = cosineSimilarity(aTrim, bTrim);
       return { ...doc, similarity };
     });
     

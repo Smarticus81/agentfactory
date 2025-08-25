@@ -20,6 +20,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
     { name: "Home", href: "/" },
     { name: "Dashboard", href: "/dashboard" },
     { name: "Agent Designer", href: "/dashboard/agent-designer" },
+  { name: "Documents", href: "/dashboard/documents" },
     { name: "Deploy", href: "/dashboard/deploy" },
     { name: "Integrations", href: "/dashboard/integrations" },
     { name: "Usage", href: "/dashboard/usage" },

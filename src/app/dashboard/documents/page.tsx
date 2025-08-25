@@ -1,7 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
+import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,6 +12,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Trash2, Upload, FileText, AlertCircle, CheckCircle, Loader2, Brain } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import DashboardLayout from '@/components/dashboard-layout';
 
 interface Document {
   id: string;
@@ -26,6 +29,7 @@ interface Document {
 
 export default function DocumentsPage() {
   const { user } = useUser();
+  const searchParams = useSearchParams();
   const [documents, setDocuments] = useState<Document[]>([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -35,11 +39,15 @@ export default function DocumentsPage() {
   const [processingDocuments, setProcessingDocuments] = useState<Set<string>>(new Set());
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load documents on component mount
+  // Initialize selectedAgentId from URL and load documents
   useEffect(() => {
-    if (user) {
-      loadDocuments();
+    if (!user) return;
+    const agentFromUrl = searchParams?.get('agentId') || '';
+    if (agentFromUrl && agentFromUrl !== selectedAgentId) {
+      setSelectedAgentId(agentFromUrl);
     }
+    loadDocuments();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
   const loadDocuments = async () => {
@@ -223,8 +231,28 @@ export default function DocumentsPage() {
     return '📎';
   };
 
+  const backLinks = {
+    dashboard: `/dashboard`,
+    agentDesigner: selectedAgentId ? `/dashboard/agent-designer?id=${selectedAgentId}` : `/dashboard/agent-designer`,
+    deploy: selectedAgentId ? `/dashboard/deploy?agentId=${selectedAgentId}` : `/dashboard/deploy`,
+  };
+
   return (
+    <DashboardLayout>
     <div className="container mx-auto px-4 py-8 max-w-6xl">
+      {/* Top navigation actions */}
+      <div className="mb-6 flex flex-wrap gap-3">
+        <Link href={backLinks.dashboard} className="inline-flex items-center px-3 py-2 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm">
+          ← Back to Dashboard
+        </Link>
+        <Link href={backLinks.agentDesigner} className="inline-flex items-center px-3 py-2 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm">
+          Agent Designer
+        </Link>
+        <Link href={backLinks.deploy} className="inline-flex items-center px-3 py-2 rounded-md bg-gray-800 hover:bg-gray-700 border border-gray-700 text-sm">
+          Deploy
+        </Link>
+      </div>
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
           Document Management
@@ -306,6 +334,15 @@ export default function DocumentsPage() {
               </motion.div>
             )}
           </AnimatePresence>
+
+          {/* Post-upload CTA to go test the agent with RAG */}
+          {success && selectedAgentId && (
+            <div className="mt-2">
+              <Link href={`/dashboard/agent-designer?id=${selectedAgentId}`} className="inline-flex items-center px-3 py-2 rounded-md bg-green-600 hover:bg-green-700 text-white text-sm">
+                Go to Preview and Test with RAG →
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -389,5 +426,6 @@ export default function DocumentsPage() {
         </CardContent>
       </Card>
     </div>
+    </DashboardLayout>
   );
 }

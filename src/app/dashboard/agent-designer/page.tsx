@@ -564,6 +564,15 @@ function AgentDesignerPage() {
                 Preview
               </button>
               {agentId && (
+                <Link
+                  href={`/dashboard/documents?agentId=${agentId}`}
+                  className="flex-grow w-full sm:w-auto bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center"
+                >
+                  <Upload className="w-5 h-5 mr-2" />
+                  Manage Knowledge (RAG)
+                </Link>
+              )}
+              {agentId && (
                 <button onClick={() => setShowDeleteConfirm(true)} disabled={isDeleting} className="flex-grow w-full sm:w-auto bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg flex items-center justify-center">
                   {isDeleting ? <Loader className="animate-spin w-5 h-5 mr-2" /> : <Trash2 className="w-5 h-5 mr-2" />}
                   Delete Agent
@@ -678,6 +687,7 @@ function AgentDesignerPage() {
                   wakeWords={agentConfig.voiceConfig.wakeWords}
                   onboardingComplete={true}
                   user={user}
+                  agentId={agentId || undefined}
                 />
               </div>
             </motion.div>

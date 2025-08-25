@@ -33,14 +33,15 @@ export async function POST(request: NextRequest) {
           })
         });
 
-        if (ragResponse.ok) {
+    if (ragResponse.ok) {
           const ragData = await ragResponse.json();
           console.log('Chat API - RAG response received:', { hasContext: ragData.hasContext });
           return NextResponse.json({
             response: ragData.response,
             hasContext: ragData.hasContext,
-            usage: ragData.usage,
-            source: 'rag'
+      usage: ragData.usage,
+      sources: ragData.sources || [],
+      source: 'rag'
           });
         } else {
           console.log('Chat API - RAG failed, falling back to standard chat');
@@ -82,6 +83,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ 
       response,
       hasContext: false,
+      sources: [],
       usage: completion.usage,
       source: 'standard'
     });

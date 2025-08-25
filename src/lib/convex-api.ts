@@ -190,9 +190,10 @@ export const convexApi = {
   },
 
   // Delete agent
-  deleteAgent: async (agentId: string) => {
+  deleteAgent: async (agentId: string, userId?: string) => {
     try {
-      return await convex.mutation(api.agents.deleteAgent, { agentId: agentId as any });
+      // Convex deleteAgent requires userId for authorization
+      return await convex.mutation(api.agents.deleteAgent, { agentId: agentId as any, userId: (userId || '') as any });
     } catch (error) {
       console.error('Convex deleteAgent failed:', error);
       return { success: false, error: (error as any).message || 'Unknown error' };

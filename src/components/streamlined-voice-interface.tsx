@@ -44,6 +44,7 @@ interface StreamlinedVoiceInterfaceProps {
   wakeWords?: string[];
   onboardingComplete?: boolean;
   user: any; // Add user prop
+  agentId?: string; // Wire real agent id for RAG
 }
 
 const StreamlinedVoiceInterface = memo(({
@@ -57,6 +58,7 @@ const StreamlinedVoiceInterface = memo(({
   wakeWords = ['hey bev', 'hey venue', 'hey bar'],
   onboardingComplete = false,
   user, // Add user prop
+  agentId,
 }: StreamlinedVoiceInterfaceProps) => {
   const [showSettings, setShowSettings] = useState(false);
   const [currentProvider, setCurrentProvider] = useState(voiceProvider || 'openai');
@@ -68,6 +70,8 @@ const StreamlinedVoiceInterface = memo(({
     mode,
     transcript,
     response,
+    ragUsed,
+    ragSources,
     error,
     connectionStatus,
     connect,
@@ -173,7 +177,7 @@ const StreamlinedVoiceInterface = memo(({
           googleApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
           playhtApiKey: process.env.NEXT_PUBLIC_PLAYHT_API_KEY,
           playhtUserId: process.env.NEXT_PUBLIC_PLAYHT_USER_ID,
-          agentId: 'demo-agent', // Pass agent ID for RAG (in production, get from props/context)
+          agentId: agentId || 'demo-agent', // Use real agent id when available for RAG
           userId: user?.id || 'demo-user' // Pass user ID for RAG
         });
         console.log('Voice services connected successfully');
@@ -351,9 +355,28 @@ const StreamlinedVoiceInterface = memo(({
               
               {response && (
                 <div className="p-6 bg-gradient-to-br from-white/15 to-white/5 backdrop-blur-xl rounded-2xl border border-white/20 shadow-2xl">
-                  <p className="text-white/95 text-base leading-relaxed">
-                    {response}
-                  </p>
+                  <div className="flex items-center justify-between mb-3">
+                    <p className="text-white/95 text-base leading-relaxed">
+                      {response}
+                    </p>
+                  </div>
+                  {ragUsed && (
+                    <div className="mt-4">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+                        Knowledge used
+                      </span>
+                      {ragSources && ragSources.length > 0 && (
+                        <div className="mt-2 text-xs text-white/70">
+                          <div className="opacity-80">Sources:</div>
+                          <ul className="list-disc list-inside space-y-1">
+                            {ragSources.slice(0, 5).map((s, i) => (
+                              <li key={i} className="truncate" title={s}>{s}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
             </motion.div>
@@ -426,7 +449,9 @@ const StreamlinedVoiceInterface = memo(({
                             elevenLabsApiKey: process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY,
                             googleApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
                             playhtApiKey: process.env.NEXT_PUBLIC_PLAYHT_API_KEY,
-                            playhtUserId: process.env.NEXT_PUBLIC_PLAYHT_USER_ID
+                            playhtUserId: process.env.NEXT_PUBLIC_PLAYHT_USER_ID,
+                            agentId: agentId || 'demo-agent',
+                            userId: user?.id || 'demo-user'
                           });
                         }
                       }}

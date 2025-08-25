@@ -37,6 +37,8 @@ export interface UseEnhancedVoiceReturn {
   mode: 'wake_word' | 'command' | 'shutdown';
   transcript: string;
   response: string;
+  ragUsed?: boolean;
+  ragSources?: string[];
   error: string | null;
   connectionStatus: string;
   availableVoices: Voice[];
@@ -60,6 +62,8 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
   const [mode, setMode] = useState<'wake_word' | 'command' | 'shutdown'>('shutdown');
   const [transcript, setTranscript] = useState('');
   const [response, setResponse] = useState('');
+  const [ragUsed, setRagUsed] = useState<boolean | undefined>(undefined);
+  const [ragSources, setRagSources] = useState<string[] | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
   const [connectionStatus, setConnectionStatus] = useState('Disconnected');
   const [availableVoices, setAvailableVoices] = useState<Voice[]>([]);
@@ -314,6 +318,8 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
             if (data.hasContext) {
               console.log('Response enhanced with RAG context from uploaded documents');
             }
+            setRagUsed(!!data.hasContext);
+            setRagSources(Array.isArray(data.sources) ? data.sources : undefined);
             
             setResponse(responseText);
             
@@ -489,6 +495,8 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
     setIsListening(false);
     setMode('shutdown');
     setConnectionStatus('Stopped - Press button to restart');
+  setRagUsed(undefined);
+  setRagSources(undefined);
   }, []);
 
   // Disconnect all services
@@ -529,6 +537,8 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
       setMode('shutdown');
       setTranscript('');
       setResponse('');
+  setRagUsed(undefined);
+  setRagSources(undefined);
       setError(null);
       setConnectionStatus('Disconnected');
       setAvailableVoices([]);
@@ -606,6 +616,6 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
     sendMessage,
     interrupt,
     switchProvider,
-    setWakeWords
+  setWakeWords
   };
 }
