@@ -17,6 +17,10 @@ export class WakeWordDetector {
   private mode: 'wake_word' | 'command' | 'shutdown' = 'shutdown';
   private config: WakeWordConfig;
   private isListening = false;
+  private isRestarting = false;
+  private restartTimeout: NodeJS.Timeout | null = null;
+  private restartAttempts = 0;
+  private maxRestartAttempts = 5;
   private commandTimeout: NodeJS.Timeout | null = null;
   private wakeWordVariants: Map<string, string[]> = new Map();
   private terminationPhrases = [
@@ -84,6 +88,8 @@ export class WakeWordDetector {
     this.recognition.onstart = () => {
       console.log('Wake word detection started');
       this.isListening = true;
+      // Reset restart attempts on successful start
+      this.restartAttempts = 0;
     };
 
     this.recognition.onresult = (event: any) => {
@@ -107,10 +113,10 @@ export class WakeWordDetector {
       console.log('Speech recognition ended');
       this.isListening = false;
       
-      // Only restart if in wake_word mode - don't restart during command processing
-      if (this.mode === 'wake_word') {
+      // Only restart if in wake_word mode and not already attempting to restart
+      if (this.mode === 'wake_word' && !this.isRestarting) {
         console.log('Restarting speech recognition for wake word detection');
-        setTimeout(() => this.start(), 100);
+        this.scheduleRestart();
       } else if (this.mode === 'command') {
         console.log('In command mode - letting OpenAI handle audio input');
       }
@@ -250,16 +256,67 @@ export class WakeWordDetector {
       case 'network':
         console.error('Network error in speech recognition');
         break;
+      case 'aborted':
+        // Speech recognition was aborted, don't restart immediately
+        console.log('Speech recognition aborted, will restart after delay');
+        // Don't schedule restart for aborted errors - let the onend handler deal with it
+        break;
       default:
         console.error('Speech recognition error:', error);
     }
   }
 
+  private scheduleRestart() {
+    if (this.isRestarting) {
+      console.log('Restart already scheduled, skipping');
+      return;
+    }
+
+    // Check if we've exceeded max restart attempts
+    if (this.restartAttempts >= this.maxRestartAttempts) {
+      console.error(`Max restart attempts (${this.maxRestartAttempts}) exceeded. Stopping wake word detection.`);
+      this.mode = 'shutdown';
+      this.config.onModeChange('shutdown');
+      return;
+    }
+
+    this.isRestarting = true;
+    this.restartAttempts++;
+    
+    // Clear any existing restart timeout
+    if (this.restartTimeout) {
+      clearTimeout(this.restartTimeout);
+    }
+
+    // Use exponential backoff delay to prevent rapid restart loops
+    const delay = Math.min(1000 * Math.pow(2, this.restartAttempts - 1), 5000);
+    console.log(`Scheduling restart attempt ${this.restartAttempts}/${this.maxRestartAttempts} in ${delay}ms`);
+    
+    this.restartTimeout = setTimeout(() => {
+      console.log('Executing scheduled restart...');
+      this.isRestarting = false;
+      
+      // Only restart if still in wake_word mode
+      if (this.mode === 'wake_word') {
+        this.start();
+      }
+    }, delay);
+  }
+
   public start() {
-    console.log('WakeWordDetector start() called, current state:', { isListening: this.isListening, mode: this.mode });
+    console.log('WakeWordDetector start() called, current state:', { 
+      isListening: this.isListening, 
+      mode: this.mode, 
+      isRestarting: this.isRestarting 
+    });
     
     if (this.isListening) {
       console.log('Already listening, returning early');
+      return;
+    }
+
+    if (this.isRestarting) {
+      console.log('Currently in restart cycle, waiting for completion');
       return;
     }
     
@@ -273,7 +330,8 @@ export class WakeWordDetector {
       console.log('recognition.start() called successfully');
     } catch (error) {
       console.error('Failed to start speech recognition:', error);
-      throw error;
+      // Don't throw error, just log it and let the system handle it
+      this.isListening = false;
     }
   }
 
@@ -281,10 +339,19 @@ export class WakeWordDetector {
     this.mode = 'shutdown';
     this.config.onModeChange('shutdown');
     
+    // Clear all timeouts
     if (this.commandTimeout) {
       clearTimeout(this.commandTimeout);
       this.commandTimeout = null;
     }
+    
+    if (this.restartTimeout) {
+      clearTimeout(this.restartTimeout);
+      this.restartTimeout = null;
+    }
+    
+    this.isRestarting = false;
+    this.isListening = false;
     
     try {
       this.recognition.stop();
@@ -300,5 +367,35 @@ export class WakeWordDetector {
   public setWakeWords(words: string[]) {
     this.config.wakeWords = words;
     this.initializeWakeWordVariants();
+  }
+
+  public isHealthy(): boolean {
+    return !this.isRestarting && this.mode !== 'shutdown' && this.restartAttempts < this.maxRestartAttempts;
+  }
+
+  public getHealthStatus() {
+    return {
+      isListening: this.isListening,
+      mode: this.mode,
+      isRestarting: this.isRestarting,
+      restartAttempts: this.restartAttempts,
+      maxRestartAttempts: this.maxRestartAttempts,
+      isHealthy: this.isHealthy()
+    };
+  }
+
+  public reset() {
+    console.log('Resetting WakeWordDetector...');
+    this.stop();
+    
+    // Clear all state
+    this.isListening = false;
+    this.isRestarting = false;
+    this.restartAttempts = 0;
+    this.mode = 'shutdown';
+    
+    // Reinitialize
+    this.initializeSpeechRecognition();
+    console.log('WakeWordDetector reset complete');
   }
 }
