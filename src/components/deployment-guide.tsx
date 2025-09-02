@@ -93,25 +93,22 @@ export function DeploymentGuide({ agentId, agentName }: DeploymentGuideProps) {
           </button>
         </div>
 
-        {/* Vercel Deployment */}
+        {/* Link-Based Deployment */}
         <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-200/60 dark:border-slate-700/60">
           <div className="flex items-center space-x-3 mb-4">
             <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-pink-600 rounded-lg flex items-center justify-center">
               <Globe className="w-5 h-5 text-white" />
             </div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Vercel App</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Hosted Link</h3>
           </div>
           <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-            Deploy as a standalone Vercel application with custom domain
+            Share your agent via direct link - no additional deployment needed
           </p>
           <button
             className="w-full px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-600 text-white rounded-lg hover:shadow-lg transition-all font-medium"
           >
-            Deploy to Vercel
+            Generate Share Link
           </button>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 text-center">
-            Coming soon
-          </p>
         </div>
       </div>
 

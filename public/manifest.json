@@ -1,7 +1,7 @@
 {
-  "name": "Voice Agent Studio",
-  "short_name": "VoiceStudio",
-  "description": "Professional multi-voice provider AI assistant platform with RAG capabilities, real-time voice processing, and document management",
+  "name": "FamilyAI - Your Family's Personal Assistant",
+  "short_name": "FamilyAI",
+  "description": "Create your own AI assistant in minutes. Handle emails, manage calendars, track family schedules, and get instant answers to everyday questions.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0a0a0a",
@@ -10,7 +10,7 @@
   "scope": "/",
   "lang": "en",
   "dir": "ltr",
-  "categories": ["productivity", "business", "utilities", "ai", "voice"],
+  "categories": ["productivity", "family", "utilities", "ai", "assistant"],
   "icons": [
     {
       "src": "/icon-192.png",
@@ -35,21 +35,21 @@
     {
       "name": "Dashboard",
       "short_name": "Dashboard",
-      "description": "Access your voice agent dashboard",
+      "description": "Access your AI assistant dashboard",
       "url": "/dashboard",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Agent Designer",
       "short_name": "Designer",
-      "description": "Create and customize voice agents",
+      "description": "Create and customize AI assistants",
       "url": "/dashboard/agent-designer",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
     {
       "name": "Documents",
       "short_name": "Docs",
-      "description": "Manage RAG documents and knowledge base",
+      "description": "Manage documents and knowledge base",
       "url": "/dashboard/documents",
       "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
     },
@@ -67,14 +67,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "Voice Agent Studio Dashboard - Multi-provider voice interface with real-time processing"
+      "label": "FamilyAI Dashboard - AI assistant interface with real-time processing"
     },
     {
       "src": "/screenshot-narrow.png",
       "sizes": "750x1334",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "Voice Agent Studio Mobile - Touch-optimized voice controls and document management"
+      "label": "FamilyAI Mobile - Touch-optimized AI controls and document management"
     }
   ],
   "features": [
@@ -94,7 +94,7 @@
   },
   "protocol_handlers": [
     {
-      "protocol": "web+voiceagent",
+      "protocol": "web+familyai",
       "url": "/a/%s"
     }
   ],

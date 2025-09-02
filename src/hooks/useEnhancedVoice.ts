@@ -155,6 +155,11 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
           console.error('Voice synthesis error:', error);
           setError(`Voice synthesis failed: ${error.message}`);
         });
+        
+        voicePipelineRef.current.on('provider-switched', (newProvider: string) => {
+          console.log(`Voice provider switched to: ${newProvider}`);
+          setCurrentProvider(newProvider);
+        });
       }
     } catch (error) {
       console.error('Failed to initialize voice pipeline:', error);
@@ -173,15 +178,15 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
   const initializeWakeWordDetector = useCallback((config: EnhancedVoiceConfig) => {
     wakeWordDetectorRef.current = new WakeWordDetector({
       wakeWords: config.wakeWords,
-      threshold: 0.8,
+      threshold: 0.5, // Lowered significantly from 0.8 to 0.5 for better wake word detection
       timeout: 30000, // 30 seconds command timeout
       onWakeWordDetected: async (word, confidence) => {
         console.log(`Wake word detected: "${word}" (confidence: ${confidence})`);
         setTranscript(`Wake word: "${word}"`);
         
         // Determine which voice system to use based on provider
-        if (config.provider === 'openai' || config.enableTools) {
-          // Use OpenAI Realtime for OpenAI provider or when tools are enabled
+        if (config.provider === 'openai') {
+          // Use OpenAI Realtime for OpenAI provider only
           if (openAIClientRef.current && !isGloballyConnected) {
             console.log('Wake word detected - establishing OpenAI connection now');
             try {
@@ -221,7 +226,15 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
           if (voicePipelineRef.current) {
             try {
               console.log(`Synthesizing greeting with ${config.provider}: "${greetingText}"`);
-              await voicePipelineRef.current.synthesize(greetingText, config.voice);
+              const audioBuffer = await voicePipelineRef.current.synthesize(greetingText, config.voice);
+              
+              // Play the synthesized greeting audio
+              if (audioBuffer && audioBuffer.byteLength > 0) {
+                await playAudioBuffer(audioBuffer);
+              } else {
+                console.warn('No audio buffer returned from greeting synthesis, using browser TTS fallback');
+                await speakResponse(greetingText);
+              }
             } catch (error) {
               console.error(`Failed to synthesize greeting with ${config.provider}:`, error);
               setError(`Voice synthesis failed. Please check your ${config.provider} API key and subscription.`);
@@ -291,41 +304,73 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
         console.log(`Processing command with ${configRef.current?.provider} provider: "${command}"`);
         
         try {
-          // Get text response from OpenAI text API with RAG support
-          const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              message: command,
-              instructions: configRef.current?.instructions,
-              agentName: configRef.current?.agentName,
-              agentId: configRef.current?.agentId, // Pass agent ID for RAG
-              userId: configRef.current?.userId // Pass user ID for RAG
-            })
-          });
+          let responseText = '';
           
-          if (response.ok) {
-            const data = await response.json();
-            const responseText = data.response || 'I understand, but I\'m not sure how to respond to that.';
-            
-            // Log if RAG context was used
-            if (data.hasContext) {
-              console.log('Response enhanced with RAG context from uploaded documents');
+          // Use provider-specific LLM processing if available (ElevenLabs)
+          if (configRef.current?.provider === 'elevenlabs' && voicePipelineRef.current) {
+            const currentProvider = voicePipelineRef.current.getCurrentProviderInstance();
+            if (currentProvider && 'processTextWithLLM' in currentProvider) {
+              console.log('Using ElevenLabs integrated LLM processing with tools');
+              responseText = await (currentProvider as any).processTextWithLLM(command, {
+                agentId: configRef.current?.agentId,
+                userId: configRef.current?.userId,
+                instructions: configRef.current?.instructions,
+                agentName: configRef.current?.agentName
+              });
             }
+          }
+          
+          // Fallback to standard chat API for other providers
+          if (!responseText) {
+            console.log('Using standard chat API');
+            const response = await fetch('/api/chat', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                message: command,
+                instructions: configRef.current?.instructions,
+                agentName: configRef.current?.agentName,
+                agentId: configRef.current?.agentId,
+                userId: configRef.current?.userId,
+                enableTools: configRef.current?.provider === 'elevenlabs' // Enable tools for ElevenLabs
+              })
+            });
             
-            setResponse(responseText);
-            
-            // Synthesize response using voice pipeline
-            if (voicePipelineRef.current) {
-              await voicePipelineRef.current.synthesize(responseText, configRef.current?.voice || 'alloy');
+            if (response.ok) {
+              const data = await response.json();
+              responseText = data.response || 'I understand, but I\'m not sure how to respond to that.';
+              
+              // Log if RAG context was used
+              if (data.hasContext) {
+                console.log('Response enhanced with RAG context from uploaded documents');
+              }
+              if (data.toolsUsed && data.toolsUsed.length > 0) {
+                console.log('Tools used:', data.toolsUsed);
+              }
             } else {
-              // Fallback to browser TTS
+              throw new Error('Failed to get text response');
+            }
+          }
+          
+          setResponse(responseText);
+          
+          // Synthesize response using voice pipeline
+          if (voicePipelineRef.current) {
+            console.log('Synthesizing with voice:', configRef.current?.voice);
+            const audioBuffer = await voicePipelineRef.current.synthesize(responseText, configRef.current?.voice!);
+            
+            // Play the synthesized audio
+            if (audioBuffer && audioBuffer.byteLength > 0) {
+              await playAudioBuffer(audioBuffer);
+            } else {
+              console.warn('No audio buffer returned from voice provider, using browser TTS fallback');
               await speakResponse(responseText);
             }
           } else {
-            throw new Error('Failed to get text response');
+            // Fallback to browser TTS
+            await speakResponse(responseText);
           }
         } catch (error) {
           console.error('Error getting text response:', error);
@@ -367,8 +412,8 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
           await voicePipelineRef.current.switchProvider(configRef.current.provider);
         }
         
-        // Use external TTS provider (ElevenLabs, Google, PlayHT)
-        const audioBuffer = await voicePipelineRef.current.synthesize(text, configRef.current?.voice || 'alloy');
+        console.log('Using external TTS provider with voice:', configRef.current?.voice);
+        const audioBuffer = await voicePipelineRef.current.synthesize(text, configRef.current?.voice!);
       
         // If we get audio buffer directly (non-streaming), play it
         if (audioBuffer && audioBuffer.byteLength > 0) {

@@ -22,61 +22,92 @@ export class VoicePipelineManager extends EventEmitter {
 
     console.log('Initializing voice pipeline with config:', config);
 
-    // Initialize only the default provider
-    const defaultProviderConfig = config.providers.find(p => p.type === config.defaultProvider);
-    if (!defaultProviderConfig) {
-      throw new Error(`Default provider '${config.defaultProvider}' not found in configuration`);
-    }
-
-    let provider: any;
-    try {
-      switch (defaultProviderConfig.type) {
-        case 'openai':
-          provider = new OpenAIProvider();
-          break;
-        case 'elevenlabs':
-          provider = new ElevenLabsProvider();
-          break;
-        case 'google':
-          provider = new GoogleTTSProvider();
-          break;
-        case 'playht':
-          provider = new PlayHTProvider();
-          break;
-        default:
-          throw new Error(`Unknown provider type: ${defaultProviderConfig.type}`);
+    // Always ensure OpenAI is available as a fallback
+    const openaiConfig = {
+      type: 'openai' as const,
+      config: { 
+        apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || ''
       }
+    };
+    
+    // Try to initialize the requested default provider first
+    let primaryProvider: any = null;
+    let primaryProviderType = config.defaultProvider;
+    
+    if (config.defaultProvider !== 'openai') {
+      const defaultProviderConfig = config.providers.find(p => p.type === config.defaultProvider);
+      if (defaultProviderConfig) {
+        try {
+          switch (defaultProviderConfig.type) {
+            case 'elevenlabs':
+              primaryProvider = new ElevenLabsProvider();
+              break;
+            case 'google':
+              primaryProvider = new GoogleTTSProvider();
+              break;
+            case 'playht':
+              primaryProvider = new PlayHTProvider();
+              break;
+          }
 
-      await provider.initialize(defaultProviderConfig.config);
-      this.providers.set(defaultProviderConfig.type, provider);
-      console.log(`${defaultProviderConfig.type} provider initialized successfully`);
+          if (primaryProvider) {
+            await primaryProvider.initialize(defaultProviderConfig.config);
+            this.providers.set(defaultProviderConfig.type, primaryProvider);
+            console.log(`${defaultProviderConfig.type} provider initialized successfully`);
+            
+            // Set up provider event forwarding
+            primaryProvider.on('connected', () => this.emit('provider-connected', defaultProviderConfig.type));
+            primaryProvider.on('disconnected', () => this.emit('provider-disconnected', defaultProviderConfig.type));
+            primaryProvider.on('error', (error: any) => this.emit('provider-error', defaultProviderConfig.type, error));
+            primaryProvider.on('audio-chunk', (chunk: any) => this.emit('audio-chunk', chunk));
+            primaryProvider.on('synthesis-complete', (data: any) => this.emit('synthesis-complete', data));
+          }
+        } catch (error) {
+          console.error(`Failed to initialize primary provider ${defaultProviderConfig.type}:`, error);
+          console.log('Falling back to OpenAI provider...');
+          primaryProvider = null;
+          primaryProviderType = 'openai';
+        }
+      }
+    }
+    
+    // Always initialize OpenAI as fallback
+    try {
+      const openaiProvider = new OpenAIProvider();
+      await openaiProvider.initialize(openaiConfig.config);
+      this.providers.set('openai', openaiProvider);
+      console.log('OpenAI provider initialized successfully (fallback)');
       
-      // Set up provider event forwarding
-      provider.on('connected', () => this.emit('provider-connected', defaultProviderConfig.type));
-      provider.on('disconnected', () => this.emit('provider-disconnected', defaultProviderConfig.type));
-      provider.on('error', (error: any) => this.emit('provider-error', defaultProviderConfig.type, error));
-      provider.on('audio-chunk', (chunk: any) => this.emit('audio-chunk', chunk));
-      provider.on('synthesis-complete', (data: any) => this.emit('synthesis-complete', data));
+      // Set up OpenAI provider event forwarding
+      openaiProvider.on('connected', () => this.emit('provider-connected', 'openai'));
+      openaiProvider.on('disconnected', () => this.emit('provider-disconnected', 'openai'));
+      openaiProvider.on('error', (error: any) => {
+        console.log('OpenAI provider error (non-critical):', error);
+        // Don't emit error for OpenAI since it's just a fallback
+      });
+      openaiProvider.on('audio-chunk', (chunk: any) => this.emit('audio-chunk', chunk));
+      openaiProvider.on('synthesis-complete', (data: any) => this.emit('synthesis-complete', data));
       
     } catch (error) {
-      console.error(`Failed to initialize default provider ${defaultProviderConfig.type}:`, error);
-      throw new Error(`Failed to initialize your ${defaultProviderConfig.type} voice service. Please check your API key and subscription.`);
+      console.log('OpenAI fallback provider initialization had issues (will use browser TTS):', error);
+      // Don't throw error - we'll use browser TTS as final fallback
     }
 
-    this.currentProvider = config.defaultProvider;
-    this.defaultProvider = config.defaultProvider;
-
-
-
-    this.currentProvider = config.defaultProvider;
-    this.defaultProvider = config.defaultProvider;
+    this.currentProvider = primaryProviderType;
+    this.defaultProvider = primaryProviderType;
     this.isInitialized = true;
     this.emit('initialized');
   }
 
   async switchProvider(providerType: string): Promise<void> {
     if (!this.providers.has(providerType)) {
-      throw new Error(`Provider ${providerType} not available`);
+      console.warn(`Provider ${providerType} not available, falling back to OpenAI`);
+      if (this.providers.has('openai')) {
+        this.currentProvider = 'openai';
+        this.emit('provider-switched', 'openai');
+        return;
+      }
+      throw new Error(`Provider ${providerType} not available and no fallback available`);
     }
     
     console.log(`Switching voice provider from ${this.currentProvider} to ${providerType}`);
@@ -86,18 +117,127 @@ export class VoicePipelineManager extends EventEmitter {
 
   async synthesize(text: string, voice: string, provider?: string): Promise<ArrayBuffer> {
     const targetProvider = provider || this.currentProvider;
-    const voiceProvider = this.providers.get(targetProvider);
+    let voiceProvider = this.providers.get(targetProvider);
     
     if (!voiceProvider) {
-      throw new Error(`Voice provider '${targetProvider}' is not available. Please ensure your API key is configured correctly.`);
+      console.warn(`Primary provider '${targetProvider}' not available, falling back to OpenAI`);
+      voiceProvider = this.providers.get('openai');
+      if (!voiceProvider) {
+        // Last resort: use browser Text-to-Speech
+        return this.browserTextToSpeech(text, voice);
+      }
+      // Update current provider to OpenAI for future calls
+      this.currentProvider = 'openai';
+      this.emit('provider-switched', 'openai');
     }
     
     try {
-      return await voiceProvider.synthesize(text, voice);
+      // Map voice names for OpenAI if we're falling back
+      let actualVoice = voice;
+      if (voiceProvider === this.providers.get('openai') && targetProvider !== 'openai') {
+        // Map non-OpenAI voice names to OpenAI equivalents
+        const voiceMapping: { [key: string]: string } = {
+          'Rachel': 'nova',
+          'Domi': 'alloy', 
+          'Bella': 'nova',
+          'Antoni': 'onyx',
+          'Elli': 'shimmer',
+          'Josh': 'onyx',
+          'en-US-Journey-F': 'nova',
+          'en-US-Journey-M': 'onyx',
+          'en-US-Studio-O': 'alloy',
+          'en-US-News-K': 'echo',
+          'en-US-Standard-C': 'nova',
+          'en-US-Standard-D': 'onyx'
+        };
+        actualVoice = voiceMapping[voice] || 'nova';
+        console.log(`Mapped voice ${voice} to OpenAI voice ${actualVoice}`);
+      }
+      
+      return await voiceProvider.synthesize(text, actualVoice);
     } catch (error) {
       console.error(`Voice synthesis failed with ${targetProvider}:`, error);
-      throw new Error(`Voice synthesis failed with ${targetProvider}. Please check your API key and subscription status.`);
+      
+      // Try fallback to OpenAI if we haven't already
+      if (targetProvider !== 'openai' && this.providers.has('openai')) {
+        console.log(`Attempting fallback to OpenAI for synthesis...`);
+        try {
+          const openaiProvider = this.providers.get('openai');
+          // Map voice to OpenAI equivalent
+          const voiceMapping: { [key: string]: string } = {
+            'Rachel': 'nova',
+            'Domi': 'alloy', 
+            'Bella': 'nova',
+            'Antoni': 'onyx',
+            'Elli': 'shimmer',
+            'Josh': 'onyx',
+            'en-US-Journey-F': 'nova',
+            'en-US-Journey-M': 'onyx',
+            'en-US-Studio-O': 'alloy',
+            'en-US-News-K': 'echo',
+            'en-US-Standard-C': 'nova',
+            'en-US-Standard-D': 'onyx'
+          };
+          const fallbackVoice = voiceMapping[voice] || 'nova';
+          this.currentProvider = 'openai';
+          this.emit('provider-switched', 'openai');
+          return await openaiProvider!.synthesize(text, fallbackVoice);
+        } catch (fallbackError) {
+          console.error('Fallback to OpenAI also failed:', fallbackError);
+          // Last resort: browser Text-to-Speech
+          return this.browserTextToSpeech(text, voice);
+        }
+      }
+      
+      // Final fallback to browser TTS
+      console.log('All voice providers failed, using browser Text-to-Speech as final fallback');
+      return this.browserTextToSpeech(text, voice);
     }
+  }
+
+  private async browserTextToSpeech(text: string, voice: string): Promise<ArrayBuffer> {
+    return new Promise((resolve, reject) => {
+      try {
+        console.log('Using browser Text-to-Speech as final fallback');
+        this.currentProvider = 'browser-tts';
+        this.emit('provider-switched', 'browser-tts');
+        
+        const utterance = new SpeechSynthesisUtterance(text);
+        
+        // Try to find a matching voice
+        const voices = speechSynthesis.getVoices();
+        const selectedVoice = voices.find(v => 
+          v.name.toLowerCase().includes(voice.toLowerCase()) ||
+          v.name.toLowerCase().includes('female') ||
+          v.name.toLowerCase().includes('male')
+        ) || voices[0];
+        
+        if (selectedVoice) {
+          utterance.voice = selectedVoice;
+        }
+        
+        utterance.rate = 1.0;
+        utterance.pitch = 1.0;
+        utterance.volume = 1.0;
+        
+        utterance.onend = () => {
+          console.log('Browser TTS synthesis completed');
+          resolve(new ArrayBuffer(0));
+        };
+        
+        utterance.onerror = (event) => {
+          console.error('Browser TTS error:', event);
+          reject(new Error('Browser Text-to-Speech failed'));
+        };
+        
+        console.log(`Using browser TTS with voice: ${selectedVoice?.name || 'default'}`);
+        speechSynthesis.speak(utterance);
+        
+      } catch (error) {
+        console.error('Browser TTS setup failed:', error);
+        reject(error);
+      }
+    });
   }
 
   async getVoices(): Promise<Voice[]> {
@@ -133,6 +273,10 @@ export class VoicePipelineManager extends EventEmitter {
 
   getCurrentProvider(): string {
     return this.currentProvider;
+  }
+
+  getCurrentProviderInstance(): VoiceProvider | null {
+    return this.providers.get(this.currentProvider) || null;
   }
 
   getAvailableProviders(): string[] {

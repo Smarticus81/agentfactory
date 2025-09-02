@@ -3,7 +3,7 @@
 import { useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "../../../../convex/_generated/api";
-import StreamlinedVoiceInterface from "@/components/streamlined-voice-interface";
+import MinimalistAgentInterface from "@/components/minimalist-agent-interface";
 
 export default function HostedAgentPage() {
   const params = useParams();
@@ -11,42 +11,61 @@ export default function HostedAgentPage() {
   const agentId = params?.agentId as string;
   const embed = search?.get("embed") === "1";
 
-  const published = useQuery(api.agents.getPublishedAgent, agentId ? { agentId: agentId as any } : "skip");
+  const published = useQuery(api.assistants.getPublishedAgent, agentId ? { agentId: agentId as any } : "skip");
 
   if (!agentId) {
-    return <div className="p-6 text-sm text-gray-600">Missing agentId.</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600">Missing agent ID</p>
+        </div>
+      </div>
+    );
   }
 
   if (published === undefined) {
-    return <div className="p-6 text-sm text-gray-600">Loading agent…</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading agent...</p>
+        </div>
+      </div>
+    );
   }
 
   if (published === null) {
-    return <div className="p-6 text-sm text-gray-600">This agent is not published or does not exist.</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <p className="text-gray-600">This agent is not published or does not exist.</p>
+        </div>
+      </div>
+    );
   }
 
   const { config } = published as any;
+  
   const agentName: string = config?.name ?? "Agent";
-  const agentType: "Event Venue" | "Venue Bar" | "Venue Voice" = config?.type ?? "Event Venue";
-  const primaryColor: string = config?.ui?.primaryColor ?? "#10a37f";
-  const secondaryColor: string = config?.ui?.customization?.colors?.secondary ?? "#059669";
-  const customization = config?.ui?.customization || {};
+  const agentType: "Family Assistant" | "Personal Admin" | "Student Helper" | "Custom" = config?.type ?? "Family Assistant";
+  const primaryColor: string = config?.ui?.primaryColor ?? "#3b82f6";
+  const secondaryColor: string = config?.ui?.customization?.colors?.secondary ?? "#1d4ed8";
   
   // Extract voice configuration from published config
   const voiceProvider: string = config?.voiceConfig?.provider ?? "openai";
-  const selectedVoice: string = config?.voiceConfig?.voice ?? "alloy";
-  // Ensure wakeWords is always an array (defensive against object format)
+  const selectedVoice: string = config?.voiceConfig?.voice ?? "nova";
+  
+  // Ensure wakeWords is always an array
   const configWakeWords = config?.voiceConfig?.wakeWords;
-  const wakeWords: string[] = Array.isArray(configWakeWords) ? configWakeWords : ['hey bev', 'hey venue'];
+  const wakeWords: string[] = Array.isArray(configWakeWords) ? configWakeWords : ['hey assistant'];
 
   return (
     <div className={embed ? "bg-transparent" : ""}>
-      <StreamlinedVoiceInterface
+      <MinimalistAgentInterface
         agentName={agentName}
         agentType={agentType}
         primaryColor={primaryColor}
         secondaryColor={secondaryColor}
-        customization={customization}
         voiceProvider={voiceProvider}
         selectedVoice={selectedVoice}
         wakeWords={wakeWords}

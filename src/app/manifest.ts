@@ -2,14 +2,14 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'BevPro Studio - Professional Voice Agent Platform',
-    short_name: 'BevPro Studio',
-    description: 'Create and deploy professional voice agents for event venues and bars with ultra-low latency',
+    name: 'FamilyAI - Your Personal AI Assistant',
+    short_name: 'FamilyAI',
+    description: 'Create your own AI assistant for family organization, email management, and calendar coordination',
     start_url: '/',
     scope: '/',
     display: 'standalone',
     background_color: '#ffffff',
-    theme_color: '#10a37f',
+    theme_color: '#3b82f6',
     icons: [
       {
         src: '/icon-192.png',

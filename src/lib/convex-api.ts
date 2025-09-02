@@ -17,38 +17,25 @@ const getAuthToken = async () => {
 };
 
 export const convexApi = {
-  // Agent operations
+  // Create a new agent
   createAgent: async (agentData: {
     userId: string;
     name: string;
-    type: "Event Venue" | "Venue Bar";
-    description?: string;
+    type: string;
+    description: string;
     customInstructions?: string;
-    context?: string;
+    voiceEnabled?: boolean;
+    wakeWord?: string;
     voiceConfig?: any;
-    toolPermissions?: any;
-    deploymentSettings?: any;
-    tags?: string[];
   }) => {
     try {
-      return await convex.mutation(api.agents.createAgent, agentData);
+      return await convex.mutation(api.assistants.create, {
+        ...agentData,
+        type: agentData.type as "Family Assistant" | "Personal Admin" | "Student Helper"
+      });
     } catch (error) {
       console.error('Convex createAgent failed:', error);
-      // Return a mock ID for testing
-      const mockId = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Store mock agent data in localStorage for fallback
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('mockAgent', JSON.stringify({
-          _id: mockId,
-          ...agentData,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }));
-        localStorage.setItem('mockAgentId', mockId);
-      }
-      
-      return mockId;
+      throw new Error('Failed to create agent. Please try again.');
     }
   },
 
@@ -62,28 +49,17 @@ export const convexApi = {
     settings?: any;
   }) => {
     try {
-      return await convex.mutation(api.deployments.createDeployment, {
-        ...deploymentData,
-        agentId: deploymentData.agentId as any
+      return await convex.mutation(api.deployments.create, {
+        assistantId: deploymentData.agentId as any,
+        userId: deploymentData.userId,
+        name: deploymentData.name,
+        description: deploymentData.deploymentType,
+        status: "active",
+        settings: deploymentData.settings || {}
       });
     } catch (error) {
       console.error('Convex createDeployment failed:', error);
-      // Return a mock ID for testing
-      const mockDeployId = `deploy_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      // Store mock deployment data in localStorage for fallback
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('mockDeploymentId', mockDeployId);
-        localStorage.setItem('mockDeployment', JSON.stringify({
-          _id: mockDeployId,
-          ...deploymentData,
-          status: 'active',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }));
-      }
-      
-      return mockDeployId;
+      throw new Error('Failed to create deployment. Please try again.');
     }
   },
 
@@ -98,76 +74,47 @@ export const convexApi = {
       return await convex.action(api.vercelDeploy.createVercelDeployment, deploymentData);
     } catch (error) {
       console.error('Vercel deployment failed:', error);
-      // Return mock deployment data for testing
-      const mockDeployId = `vercel_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('mockVercelDeploymentId', mockDeployId);
-        localStorage.setItem('mockVercelDeployment', JSON.stringify({
-          deploymentId: mockDeployId,
-          deploymentUrl: `https://agent-${deploymentData.agentId}.vercel.app`,
-          claimLink: `https://vercel.com/claim/${mockDeployId}`,
-          agentId: deploymentData.agentId,
-          status: 'deployed',
-          timestamp: new Date().toISOString(),
-        }));
-      }
-      
-                     return {
-                 success: true,
-                 deploymentId: mockDeployId,
-                 deploymentUrl: `https://bevpro-agent-${deploymentData.agentId}.vercel.app`,
-                 claimLink: `https://vercel.com/claim/${mockDeployId}`,
-                 agentId: deploymentData.agentId,
-                 status: 'deployed',
-                 timestamp: new Date().toISOString(),
-               };
+      throw new Error('Failed to deploy to Vercel. Please try again.');
     }
   },
 
   // Get user agents
   getUserAgents: async (userId: string) => {
     try {
-      return await convex.query(api.agents.getUserAgents, { userId });
+      return await convex.query(api.assistants.getUserAssistants, { userId });
     } catch (error) {
       console.error('Convex getUserAgents failed:', error);
-      // Return mock agent data from localStorage as fallback
-      if (typeof window !== 'undefined') {
-        const mockAgent = localStorage.getItem('mockAgent');
-        if (mockAgent) {
-          return [JSON.parse(mockAgent)];
-        }
-      }
-      return [];
+      throw new Error('Failed to fetch agents. Please try again.');
     }
   },
 
-  // Get agent deployments
-  getAgentDeployments: async (agentId: string) => {
+  // Get agent by ID
+  getAgentById: async (agentId: string) => {
     try {
-      // Skip if agentId is undefined or mock
-      if (!agentId || agentId === 'undefined' || agentId.startsWith('mock_')) {
-        // Return mock deployment data from localStorage
-        if (typeof window !== 'undefined') {
-          const mockDeployment = localStorage.getItem('mockDeployment');
-          if (mockDeployment) {
-            return [JSON.parse(mockDeployment)];
-          }
-        }
-        return [];
-      }
-      
-      return await convex.query(api.deployments.getAgentDeployments, { agentId: agentId as any });
+      return await convex.query(api.assistants.getById, { assistantId: agentId as any });
     } catch (error) {
-      console.error('Convex getAgentDeployments failed:', error);
-      // Return mock deployment data from localStorage as fallback
-      if (typeof window !== 'undefined') {
-        const mockDeployment = localStorage.getItem('mockDeployment');
-        if (mockDeployment) {
-          return [JSON.parse(mockDeployment)];
-        }
-      }
-      return [];
+      console.error('Convex getAgentById failed:', error);
+      throw new Error('Failed to fetch agent. Please try again.');
+    }
+  },
+
+  // Get user deployments
+  getUserDeployments: async (userId: string) => {
+    try {
+      return await convex.query(api.deployments.getUserDeployments, { userId });
+    } catch (error) {
+      console.error('Convex getUserDeployments failed:', error);
+      throw new Error('Failed to fetch deployments. Please try again.');
+    }
+  },
+
+  // Get deployment by ID
+  getDeploymentById: async (deploymentId: string) => {
+    try {
+      return await convex.query(api.deployments.getById, { deploymentId: deploymentId as any });
+    } catch (error) {
+      console.error('Convex getDeploymentById failed:', error);
+      throw new Error('Failed to fetch deployment. Please try again.');
     }
   },
 
@@ -179,9 +126,9 @@ export const convexApi = {
     pwaManifest?: any;
   }) => {
     try {
-      return await convex.mutation(api.agents.saveGeneratedUI, {
-        ...data,
-        agentId: data.agentId as any
+      return await convex.mutation(api.assistants.updateConfig, {
+        assistantId: data.agentId as any,
+        config: { customInstructions: data.generatedUI }
       });
     } catch (error) {
       console.error('Convex saveGeneratedUI failed:', error);
@@ -190,9 +137,9 @@ export const convexApi = {
   },
 
   // Delete agent
-  deleteAgent: async (agentId: string) => {
+  deleteAgent: async (agentId: string, userId: string) => {
     try {
-      return await convex.mutation(api.agents.deleteAgent, { agentId: agentId as any });
+      return await convex.mutation(api.assistants.deleteAgent, { agentId: agentId as any, userId });
     } catch (error) {
       console.error('Convex deleteAgent failed:', error);
       return { success: false, error: (error as any).message || 'Unknown error' };
@@ -202,7 +149,7 @@ export const convexApi = {
   // Delete deployment
   deleteDeployment: async (deploymentId: string) => {
     try {
-      return await convex.mutation(api.deployments.deleteDeployment, { deploymentId: deploymentId as any });
+      return await convex.mutation(api.deployments.remove, { deploymentId: deploymentId as any });
     } catch (error) {
       console.error('Convex deleteDeployment failed:', error);
       return { success: false, error: (error as any).message || 'Unknown error' };

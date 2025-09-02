@@ -110,7 +110,7 @@ export function useRealtimeVoice(): UseRealtimeVoiceReturn {
       // Connect to OpenAI
       await sessionRef.current.connect({
         instructions: config.instructions,
-        voice: config.voice || 'alloy',
+        voice: config.voice, // Removed fallback to ensure user selection is respected
         temperature: config.temperature || 0.7,
         tools: config.enableTools ? SQUARE_TOOLS : undefined,
       });

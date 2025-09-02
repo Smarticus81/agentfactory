@@ -3,28 +3,22 @@ import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 // Create a new deployment
-export const createDeployment = mutation({
+export const create = mutation({
   args: {
-    agentId: v.id("agents"),
+    assistantId: v.id("assistants"),
     userId: v.string(),
     name: v.string(),
-    deploymentType: v.union(v.literal("pwa"), v.literal("web"), v.literal("api")),
-    url: v.optional(v.string()),
+    description: v.optional(v.string()),
+    status: v.union(v.literal("active"), v.literal("paused"), v.literal("stopped")),
     settings: v.optional(v.any()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
     const deployment = {
-      agentId: args.agentId,
-      userId: args.userId,
+      assistantId: args.assistantId,
+      userId: args.userId as Id<"users">,
       name: args.name,
-      status: "active" as const,
-      deploymentType: args.deploymentType,
-      url: args.url,
+      description: args.description || "",
+      status: args.status,
       settings: args.settings || {},
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -32,39 +26,40 @@ export const createDeployment = mutation({
 
     const deploymentId = await ctx.db.insert("deployments", deployment);
 
-    // Update agent with deployment info
-    await ctx.db.patch(args.agentId, {
+    // Update the assistant to mark it as deployed
+    await ctx.db.patch(args.assistantId, {
+      isDeployed: true,
       updatedAt: new Date().toISOString(),
     });
 
-    return deploymentId;
+    return { deploymentId };
   },
 });
 
-// Get all deployments for a user
-export const getUserDeployments = query({
+// Get deployments for a user
+export const list = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("deployments")
-      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .withIndex("by_user", (q) => q.eq("userId", args.userId as Id<"users">))
       .collect();
   },
 });
 
-// Get deployments for a specific agent
-export const getAgentDeployments = query({
-  args: { agentId: v.id("agents") },
+// Get deployments for a specific assistant
+export const getByAssistant = query({
+  args: { assistantId: v.id("assistants") },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("deployments")
-      .withIndex("by_agent", (q) => q.eq("agentId", args.agentId))
+      .withIndex("by_assistant", (q) => q.eq("assistantId", args.assistantId))
       .collect();
   },
 });
 
-// Get deployment by ID
-export const getDeployment = query({
+// Get a specific deployment
+export const get = query({
   args: { deploymentId: v.id("deployments") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.deploymentId);
@@ -72,44 +67,30 @@ export const getDeployment = query({
 });
 
 // Update deployment status
-export const updateDeploymentStatus = mutation({
+export const updateStatus = mutation({
   args: {
     deploymentId: v.id("deployments"),
     status: v.union(v.literal("active"), v.literal("paused"), v.literal("stopped")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
     await ctx.db.patch(args.deploymentId, {
       status: args.status,
       updatedAt: new Date().toISOString(),
     });
 
-    return { success: true, status: args.status };
+    return { success: true };
   },
 });
 
-// Update deployment configuration
-export const updateDeployment = mutation({
+// Update deployment settings
+export const updateSettings = mutation({
   args: {
     deploymentId: v.id("deployments"),
-    updates: v.object({
-      name: v.optional(v.string()),
-      url: v.optional(v.string()),
-      settings: v.optional(v.any()),
-    }),
+    settings: v.any(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
     await ctx.db.patch(args.deploymentId, {
-      ...args.updates,
+      settings: args.settings,
       updatedAt: new Date().toISOString(),
     });
 
@@ -117,22 +98,8 @@ export const updateDeployment = mutation({
   },
 });
 
-// Delete deployment
-export const deleteDeployment = mutation({
-  args: { deploymentId: v.id("deployments") },
-  handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    await ctx.db.delete(args.deploymentId);
-    return { success: true };
-  },
-});
-
-// Get deployment statistics
-export const getDeploymentStats = query({
+// Delete a deployment
+export const remove = mutation({
   args: { deploymentId: v.id("deployments") },
   handler: async (ctx, args) => {
     const deployment = await ctx.db.get(args.deploymentId);
@@ -140,36 +107,57 @@ export const getDeploymentStats = query({
       throw new Error("Deployment not found");
     }
 
+    // Update the assistant to mark it as not deployed
+    await ctx.db.patch(deployment.assistantId, {
+      isDeployed: false,
+      updatedAt: new Date().toISOString(),
+    });
+
+    await ctx.db.delete(args.deploymentId);
+    return { success: true };
+  },
+});
+
+// Get deployment analytics
+export const getAnalytics = query({
+  args: { deploymentId: v.id("deployments") },
+  handler: async (ctx, args) => {
+    const deployment = await ctx.db.get(args.deploymentId);
+    if (!deployment) return null;
+
     // Get voice sessions for this deployment
     const sessions = await ctx.db
       .query("voiceSessions")
-      .withIndex("by_agent", (q) => q.eq("agentId", deployment.agentId))
+      .withIndex("by_assistant", (q) => q.eq("assistantId", deployment.assistantId))
       .collect();
 
-    // Get voice commands for this deployment
-    const commands = await ctx.db
-      .query("voiceCommands")
-      .withIndex("by_agent", (q) => q.eq("agentId", deployment.agentId))
+    // Get action logs for this deployment
+    const actions = await ctx.db
+      .query("actionLog")
+      .withIndex("by_user", (q) => q.eq("userId", deployment.userId))
       .collect();
 
-    // Calculate statistics
-    const totalSessions = sessions.length;
-    const activeSessions = sessions.filter(s => s.status === "active").length;
-    const totalCommands = commands.length;
-    const successfulCommands = commands.filter(c => c.success).length;
-    const failedCommands = commands.filter(c => !c.success).length;
+    const successfulActions = actions.filter(a => a.requiresConfirmation && a.confirmedBy).length;
+    const totalActions = actions.length;
 
     return {
-      deployment: deployment,
-      stats: {
-        totalSessions,
-        activeSessions,
-        totalCommands,
-        successfulCommands,
-        failedCommands,
-        successRate: totalCommands > 0 ? (successfulCommands / totalCommands) * 100 : 0,
-        lastActivity: deployment.updatedAt,
+      deploymentId: args.deploymentId,
+      status: deployment.status,
+      sessions: {
+        total: sessions.length,
+        active: sessions.filter(s => s.status === "active").length,
+        completed: sessions.filter(s => s.status === "ended").length,
       },
+      actions: {
+        total: totalActions,
+        successful: successfulActions,
+        pending: totalActions - successfulActions,
+      },
+      lastActivity: deployment.updatedAt,
     };
   },
 });
+
+// Aliases for compatibility
+export const getUserDeployments = list;
+export const getById = get;

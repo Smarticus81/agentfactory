@@ -21,9 +21,9 @@ export function useVoiceSession() {
           startSession({
             agentId: "default",
             instructions: "You are a helpful assistant",
-            voice: "alloy",
+            voice: "nova", // Changed from "alloy" to avoid hardcoded defaults
             temperature: 0.7,
-            wakeWord: "Hey Venue",
+            wakeWord: "Hey Family",
           });
         }
       };

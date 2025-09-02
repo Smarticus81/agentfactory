@@ -1,283 +1,327 @@
 "use client";
 
 import DashboardLayout from '@/components/dashboard-layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Check } from 'lucide-react';
+import { Check, Zap, Shield, Star, Mic } from 'lucide-react';
+import { useState } from 'react';
 
 const plans = [
   {
-    name: 'Starter',
-    price: 49,
-    description: 'Perfect for small venues just getting started',
+    id: 'lite',
+    name: 'Lite',
+    price: 0,
+    billing: 'Free forever',
+    description: 'Get started with basic voice assistant features',
+    voicePipeline: 'Basic STT ↔ LLM ↔ TTS (turn-based)',
     features: [
-      '1 AI Assistant',
-      '500 voice calls per month',
-      '1,000 text messages per month',
+      '60 voice minutes/month',
+      'Turn-based voice (no barge-in)',
+      'No wake-word',
+      '300 email summaries/month',
+      '30 email sends/month',
+      '1 routine/day',
       'Basic calendar integration',
-      'Email support',
-      'Standard voice quality'
+      'Community support'
     ],
-    popular: false,
-    savings: 'Save $120/year'
+    limitations: [
+      'No streaming voice',
+      'No wake words',
+      'Limited voice minutes'
+    ],
+    buttonText: 'Current Plan',
+    disabled: true,
+    icon: Mic
   },
   {
-    name: 'Professional',
-    price: 99,
-    description: 'Ideal for growing venues with multiple events',
+    id: 'pro',
+    name: 'Pro',
+    price: 19,
+    billing: '/month',
+    description: 'Advanced features with streaming voice and barge-in',
+    voicePipeline: 'Streaming STT with interruptible TTS',
     features: [
-      '3 AI Assistants',
-      '2,000 voice calls per month',
-      '5,000 text messages per month',
-      'Advanced calendar integration',
-      'Payment processing',
+      '300 voice minutes/month',
+      'Streaming voice with barge-in',
+      'Automatic turn detection',
+      '2,000 email summaries/month',
+      '200 email sends/month',
+      '3 routines/day',
+      'Full calendar orchestration',
       'Priority support',
-      'Multi-language support',
-      'Custom branding'
+      'Gmail & Outlook integration'
     ],
     popular: true,
-    savings: 'Save $240/year'
+    buttonText: 'Upgrade to Pro',
+    icon: Zap
   },
   {
-    name: 'Enterprise',
-    price: 199,
-    description: 'For large venues and event management companies',
+    id: 'pro_plus',
+    name: 'Pro+',
+    price: 39,
+    billing: '/month',
+    description: 'Wake words and enhanced voice capabilities',
+    voicePipeline: 'Pro features + Wake-word detection',
     features: [
-      'Unlimited AI Assistants',
-      '10,000 voice calls per month',
-      '25,000 text messages per month',
-      'Full CRM integration',
-      'Advanced analytics',
-      'Dedicated support',
-      'Custom integrations',
+      'Everything in Pro',
+      'Custom wake words ("Hey Assistant")',
+      'On-device wake detection',
+      '500 voice minutes/month',
+      '5 routines/day',
+      'Advanced RAG over documents',
+      'Family member profiles',
+      'Multi-calendar sync'
+    ],
+    buttonText: 'Upgrade to Pro+',
+    icon: Star
+  },
+  {
+    id: 'premium',
+    name: 'Premium',
+    price: 99,
+    billing: '/month',
+    description: 'Enterprise-grade with Realtime API and premium TTS',
+    voicePipeline: 'OpenAI Realtime + Expressive TTS',
+    features: [
+      '2,000 voice minutes/month',
+      'OpenAI Realtime multimodal',
+      'Expressive/low-latency TTS',
+      'Voice cloning (with consent)',
+      'Unlimited email operations',
+      '10 routines/day',
       'White-label options',
       'API access',
-      'Advanced security'
+      'Dedicated support',
+      'Custom integrations'
     ],
-    popular: false,
-    savings: 'Save $480/year'
+    enterprise: true,
+    buttonText: 'Contact Sales',
+    icon: Shield
   }
 ];
 
-const addons = [
-  {
-    name: 'Advanced Voice Processing',
-    price: 29.99,
-    description: 'Enhanced voice recognition and natural language processing',
-    features: ['Better accuracy', 'Multiple accents', 'Noise reduction']
-  },
-  {
-    name: 'Multi-Language Support',
-    price: 19.99,
-    description: 'Support for Spanish, French, German, and more',
-    features: ['5 languages included', 'Cultural adaptation', 'Localized responses']
-  },
-  {
-    name: 'Calendar Integration',
-    price: 14.99,
-    description: 'Seamless integration with Google Calendar and Outlook',
-    features: ['Auto-scheduling', 'Conflict detection', 'Reminder system']
-  },
-  {
-    name: 'Payment Processing',
-    price: 24.99,
-    description: 'Accept payments directly through your AI assistant',
-    features: ['Stripe integration', 'Square integration', 'Secure payments']
-  },
-  {
-    name: 'Advanced Analytics',
-    price: 39.99,
-    description: 'Detailed insights into your venue performance',
-    features: ['Call analytics', 'Booking trends', 'Revenue tracking']
-  },
-  {
-    name: 'Custom Integrations',
-    price: 99.99,
-    description: 'Connect with your existing software and tools',
-    features: ['API development', 'Custom workflows', 'Data sync']
-  }
+const usageMeters = [
+  { name: 'Voice Minutes', unit: 'minutes', icon: Mic },
+  { name: 'Email Sends', unit: 'emails', icon: Zap },
+  { name: 'RAG Queries', unit: 'queries', icon: Star },
+  { name: 'Calendar Events', unit: 'events', icon: Shield }
 ];
 
 export default function PlansPage() {
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'yearly'>('monthly');
+  const currentPlan = 'lite'; // TODO: Get from user profile
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        <div className="text-center">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Choose Your Plan</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2 max-w-2xl mx-auto">
-            Select the perfect plan for your venue. All plans include our core AI assistant features 
-            with different levels of usage and additional capabilities.
+        {/* Header */}
+        <div>
+          <h1 className="text-h1 font-bold text-text-primary dark:text-text-primary-dark mb-2">
+            Plans & Pricing
+          </h1>
+          <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+            Choose the plan that fits your family's needs. Upgrade or downgrade anytime.
           </p>
         </div>
 
-        {/* Main Plans */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {plans.map((plan) => (
-            <Card key={plan.name} className={`relative ${plan.popular ? 'ring-2 ring-blue-500' : ''}`}>
-              {plan.popular && (
-                <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-blue-500 text-white">
-                  Most Popular
-                </Badge>
-              )}
-              <CardHeader className="text-center">
-                <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                <CardDescription>{plan.description}</CardDescription>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold text-gray-900 dark:text-white">${plan.price}</span>
-                  <span className="text-gray-600 dark:text-gray-400">/month</span>
-                </div>
-                <div className="text-sm text-green-600 dark:text-green-400 font-medium">
-                  {plan.savings}
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 mb-6">
-                  {plan.features.map((feature) => (
-                    <li key={feature} className="flex items-center">
-                      <Check className="h-4 w-4 text-green-500 mr-3 flex-shrink-0" />
-                      <span className="text-sm text-gray-700 dark:text-gray-300">{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button 
-                  className={`w-full ${plan.popular ? 'bg-blue-600 hover:bg-blue-700' : ''}`}
-                  variant={plan.popular ? 'default' : 'outline'}
-                >
-                  {plan.popular ? 'Get Started' : 'Choose Plan'}
-                </Button>
-              </CardContent>
-            </Card>
-          ))}
+        {/* Billing Toggle */}
+        <div className="flex justify-center">
+          <div className="bg-panel rounded-pill p-1 flex items-center gap-1">
+            <button
+              onClick={() => setBillingPeriod('monthly')}
+              className={`px-6 py-2 rounded-pill text-body font-medium transition-all ${
+                billingPeriod === 'monthly' 
+                  ? 'bg-accent text-white' 
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Monthly
+            </button>
+            <button
+              onClick={() => setBillingPeriod('yearly')}
+              className={`px-6 py-2 rounded-pill text-body font-medium transition-all ${
+                billingPeriod === 'yearly' 
+                  ? 'bg-accent text-white' 
+                  : 'text-text-secondary hover:text-text-primary'
+              }`}
+            >
+              Yearly (Save 20%)
+            </button>
+          </div>
         </div>
 
-        {/* Add-ons Section */}
-        <div className="space-y-6">
-          <div className="text-center">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Add-ons & Extensions</h2>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Enhance your AI assistant with additional capabilities
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {addons.map((addon) => (
-              <Card key={addon.name} className="hover:shadow-md transition-shadow">
-                <CardHeader>
-                  <CardTitle className="text-lg">{addon.name}</CardTitle>
-                  <CardDescription>{addon.description}</CardDescription>
-                  <div className="text-2xl font-bold text-gray-900 dark:text-white">
-                    ${addon.price}
-                    <span className="text-sm text-gray-600 dark:text-gray-400 font-normal">/month</span>
+        {/* Plans Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {plans.map((plan) => {
+            const isCurrentPlan = plan.id === currentPlan;
+            const yearlyPrice = plan.price * 12 * 0.8; // 20% discount
+            const displayPrice = billingPeriod === 'yearly' && plan.price > 0 
+              ? Math.round(yearlyPrice / 12) 
+              : plan.price;
+            
+            return (
+              <div
+                key={plan.id}
+                className={`relative ${plan.popular ? 'scale-105' : ''}`}
+              >
+                {plan.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2 z-10">
+                    <span className="badge badge-accent">Most Popular</span>
                   </div>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-2 mb-4">
-                    {addon.features.map((feature) => (
-                      <li key={feature} className="flex items-center">
-                        <Check className="h-3 w-3 text-green-500 mr-2 flex-shrink-0" />
-                        <span className="text-sm text-gray-700 dark:text-gray-300">{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button variant="outline" size="sm" className="w-full">
-                    Add to Plan
-                  </Button>
-                </CardContent>
+                )}
+                
+                <Card className={`h-full ${plan.popular ? 'ring-2 ring-accent' : ''} ${plan.enterprise ? 'bg-gradient-to-br from-panel to-accent-light' : ''}`}>
+                  <div className="p-6 space-y-6">
+                    {/* Plan Header */}
+                    <div>
+                      <div className="flex items-center justify-between mb-2">
+                        <h3 className="text-h3 font-semibold text-text-primary dark:text-text-primary-dark">
+                          {plan.name}
+                        </h3>
+                        <plan.icon className="w-5 h-5 text-accent" />
+                      </div>
+                      <div className="flex items-baseline gap-1 mb-2">
+                        <span className="text-h1 font-bold text-text-primary dark:text-text-primary-dark">
+                          ${displayPrice}
+                        </span>
+                        <span className="text-body text-text-secondary dark:text-text-secondary-dark">
+                          {plan.billing}
+                        </span>
+                      </div>
+                      {billingPeriod === 'yearly' && plan.price > 0 && (
+                        <p className="text-small text-accent">
+                          Save ${Math.round(plan.price * 12 * 0.2)}/year
+                        </p>
+                      )}
+                      <p className="text-small text-text-secondary dark:text-text-secondary-dark mt-2">
+                        {plan.description}
+                      </p>
+                    </div>
+
+                    {/* Voice Pipeline */}
+                    <div className="p-3 bg-accent-light rounded-lg">
+                      <p className="text-small font-medium text-accent">Voice Pipeline:</p>
+                      <p className="text-small text-text-secondary mt-1">{plan.voicePipeline}</p>
+                    </div>
+
+                    {/* Features */}
+                    <ul className="space-y-3">
+                      {plan.features.map((feature, idx) => (
+                        <li key={idx} className="flex items-start gap-2">
+                          <Check className="w-4 h-4 text-accent mt-0.5 flex-shrink-0" />
+                          <span className="text-small text-text-secondary dark:text-text-secondary-dark">
+                            {feature}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    {/* Limitations (for free plan) */}
+                    {plan.limitations && (
+                      <div className="pt-4 border-t border-hairline">
+                        <p className="text-small font-medium text-text-secondary mb-2">Limitations:</p>
+                        <ul className="space-y-2">
+                          {plan.limitations.map((limitation, idx) => (
+                            <li key={idx} className="text-small text-text-secondary opacity-60">
+                              • {limitation}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* CTA Button */}
+                    <Button
+                      className={`w-full ${isCurrentPlan ? 'btn-ghost' : plan.enterprise ? 'btn-primary' : 'btn-primary'}`}
+                      disabled={plan.disabled}
+                    >
+                      {isCurrentPlan ? 'Current Plan' : plan.buttonText}
+                    </Button>
+                  </div>
+                </Card>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Usage Meters Section */}
+        <div className="mt-12">
+          <h2 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-6">
+            Usage-Based Billing
+          </h2>
+          <p className="text-body text-text-secondary dark:text-text-secondary-dark mb-6">
+            All usage is tracked and billed through Stripe Meters. You only pay for what you use.
+          </p>
+          
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {usageMeters.map((meter) => (
+              <Card key={meter.name} className="p-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-accent-light rounded-lg flex items-center justify-center">
+                    <meter.icon className="w-5 h-5 text-accent" />
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-text-primary dark:text-text-primary-dark">
+                      {meter.name}
+                    </h4>
+                    <p className="text-small text-text-secondary dark:text-text-secondary-dark">
+                      per {meter.unit}
+                    </p>
+                  </div>
+                </div>
               </Card>
             ))}
           </div>
         </div>
 
-        {/* Benefits Section */}
-        <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20">
-          <CardHeader className="text-center">
-            <CardTitle className="text-2xl">Why Choose Bevpro Studio?</CardTitle>
-            <CardDescription>
-              See how our AI assistants can transform your venue operations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="text-center">
-                <div className="text-4xl mb-4">💰</div>
-                <h3 className="font-semibold mb-2">Save Money</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Reduce staffing costs by up to 40% while improving customer service
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl mb-4">⏰</div>
-                <h3 className="font-semibold mb-2">Save Time</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Automate repetitive tasks and focus on what matters most
-                </p>
-              </div>
-              <div className="text-center">
-                <div className="text-4xl mb-4">📈</div>
-                <h3 className="font-semibold mb-2">Increase Revenue</h3>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Never miss a booking opportunity with 24/7 availability
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Enterprise CTA */}
+        <div className="card-featured mt-12">
+          <div className="card-featured-inner text-center">
+            <h3 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-2">
+              Need a custom solution?
+            </h3>
+            <p className="text-body text-text-secondary dark:text-text-secondary-dark mb-6">
+              Get enterprise features, dedicated support, and custom integrations.
+            </p>
+            <Button className="btn-primary">
+              Contact Sales
+            </Button>
+          </div>
+        </div>
 
-        {/* FAQ Section */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Frequently Asked Questions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-6">
-              <div>
-                <h4 className="font-semibold mb-2">Can I change my plan anytime?</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Yes, you can upgrade or downgrade your plan at any time. Changes take effect immediately.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2">What happens if I exceed my monthly limits?</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  We'll notify you when you're approaching your limits. You can upgrade your plan or purchase additional usage.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2">Is there a setup fee?</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  No setup fees. You only pay for your chosen plan and any add-ons you select.
-                </p>
-              </div>
-              <div>
-                <h4 className="font-semibold mb-2">Can I cancel anytime?</h4>
-                <p className="text-sm text-gray-600 dark:text-gray-400">
-                  Yes, you can cancel your subscription at any time. No long-term contracts required.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Contact Section */}
-        <Card className="text-center">
-          <CardHeader>
-            <CardTitle>Need a Custom Solution?</CardTitle>
-            <CardDescription>
-              Contact us for enterprise pricing and custom integrations
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button variant="outline">
-                Contact Sales
-              </Button>
-              <Button>
-                Schedule Demo
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+        {/* FAQ */}
+        <div className="mt-12">
+          <h2 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-6">
+            Frequently Asked Questions
+          </h2>
+          <div className="space-y-4">
+            <Card className="p-6">
+              <h4 className="font-medium text-text-primary dark:text-text-primary-dark mb-2">
+                What's the difference between voice pipelines?
+              </h4>
+              <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+                Lite uses turn-based voice (you speak, then the assistant responds). Pro adds streaming with barge-in (you can interrupt). Pro+ adds wake-word detection. Premium uses OpenAI's Realtime API for the lowest latency.
+              </p>
+            </Card>
+            <Card className="p-6">
+              <h4 className="font-medium text-text-primary dark:text-text-primary-dark mb-2">
+                Can I change plans anytime?
+              </h4>
+              <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+                Yes! You can upgrade or downgrade your plan at any time. Changes take effect immediately, and billing is prorated.
+              </p>
+            </Card>
+            <Card className="p-6">
+              <h4 className="font-medium text-text-primary dark:text-text-primary-dark mb-2">
+                How does usage-based billing work?
+              </h4>
+              <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+                We track your usage (voice minutes, emails, etc.) and bill through Stripe Meters. Each plan includes generous allowances, and you're only charged for overages.
+              </p>
+            </Card>
+          </div>
+        </div>
       </div>
     </DashboardLayout>
   );

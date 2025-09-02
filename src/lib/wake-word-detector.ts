@@ -50,7 +50,9 @@ export class WakeWordDetector {
       'bev': ['bev', 'beth', 'beb', 'bef', 'dev'],
       'hey': ['hey', 'hay', 'hi', 'hei', 'ay'],
       'bar': ['bar', 'barr', 'bahr', 'bhar'],
-      'venue': ['venue', 'venu', 'venew', 'venyou']
+      'family': ['family', 'famil', 'familie', 'famili'],
+      'assistant': ['assistant', 'assist', 'assistnt', 'assistt', 'tk', 'tj', 'tea', 'bee', 'tee'],
+      'help': ['help', 'hel', 'hlp', 'hepl']
     };
 
     word.toLowerCase().split(' ').forEach(part => {
@@ -135,26 +137,45 @@ export class WakeWordDetector {
   private detectWakeWord(transcript: string, confidence: number) {
     let bestMatch = { word: '', score: Infinity };
 
+    console.log(`Wake word detection - checking transcript: "${transcript}"`);
+    console.log(`Available wake words:`, Array.from(this.wakeWordVariants.keys()));
+
     // Check each wake word and its variants
     this.wakeWordVariants.forEach((variants, original) => {
+      console.log(`Checking wake word "${original}" with variants:`, variants);
       variants.forEach(variant => {
         const distance = this.fuzzyMatch(transcript, variant);
+        console.log(`  - "${variant}" distance: ${distance}`);
         if (distance < bestMatch.score) {
           bestMatch = { word: original, score: distance };
         }
       });
     });
 
+    // Check for simple "hey" + any word pattern as fallback (only if no exact matches found)
+    if (bestMatch.score === Infinity) {
+      const isHeyPattern = /^hey\s+\w+/i.test(transcript.trim());
+      if (isHeyPattern) {
+        console.log(`Detected "hey" pattern as fallback: "${transcript}"`);
+        // Use the first configured wake word as the detected one
+        const firstWakeWord = Array.from(this.wakeWordVariants.keys())[0] || 'hey assistant';
+        bestMatch = { word: firstWakeWord, score: 0 };
+      }
+    }
+
     // Check if match is within threshold
-    const normalizedScore = 1 - (bestMatch.score / Math.max(transcript.length, bestMatch.word.length));
+    const normalizedScore = bestMatch.score === 0 ? 1.0 : 1 - (bestMatch.score / Math.max(transcript.length, bestMatch.word.length));
+    console.log(`Best match: "${bestMatch.word}" with score: ${bestMatch.score}, normalized: ${normalizedScore}, threshold: ${this.config.threshold}`);
     
     if (normalizedScore >= this.config.threshold) {
-      console.log(`Wake word detected: "${bestMatch.word}" (confidence: ${normalizedScore})`);
+      console.log(`✅ Wake word detected: "${bestMatch.word}" (confidence: ${normalizedScore})`);
       this.switchMode('command');
       this.config.onWakeWordDetected(bestMatch.word, normalizedScore);
       
       // Set timeout to return to wake word mode
       this.resetCommandTimeout();
+    } else {
+      console.log(`❌ Wake word not detected - normalized score ${normalizedScore} below threshold ${this.config.threshold}`);
     }
   }
 

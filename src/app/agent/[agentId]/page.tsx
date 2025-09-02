@@ -18,78 +18,38 @@ export default function AgentPWAPage() {
   const [response, setResponse] = useState('');
   // Fetch agent data
   useEffect(() => {
-    
     const fetchAgent = async () => {
       try {
         setLoading(true);
+        setError(null);
         
         // Handle undefined or invalid agentId
         if (!agentId || agentId === 'undefined') {
-          // Try to get mock agent from localStorage
-          const mockAgent = localStorage.getItem('mockAgent');
-          if (mockAgent) {
-            const parsedAgent = JSON.parse(mockAgent);
-            setAgent(parsedAgent);
-            setDeployment({
-              _id: localStorage.getItem('mockDeploymentId') || 'deploy_mock',
-              status: 'active',
-              deploymentType: 'pwa',
-            });
-            setLoading(false);
-            return;
+          throw new Error('Invalid agent ID');
+        }
+        
+        // Fetch from Convex
+        try {
+          const agentData = await convexApi.getAgentById(agentId);
+          if (agentData) {
+            setAgent(agentData);
           } else {
             throw new Error('Agent not found');
           }
-        }
-        
-        // Check if this is a mock agent
-        if (agentId.startsWith('mock_')) {
-          const mockAgent = localStorage.getItem('mockAgent');
-          if (mockAgent) {
-            const parsedAgent = JSON.parse(mockAgent);
-            setAgent(parsedAgent);
-            setDeployment({
-              _id: localStorage.getItem('mockDeploymentId') || 'deploy_mock',
-              status: 'active',
-              deploymentType: 'pwa',
-            });
-            setLoading(false);
-            return;
-          }
-        }
-        
-        // Try to fetch from Convex
-        try {
-          const agentData = await convexApi.getUserAgents(agentId);
-          if (agentData && agentData.length > 0) {
-            setAgent(agentData[0]);
-          }
           
-          const deploymentData = await convexApi.getAgentDeployments(agentId);
+          const deploymentData = await convexApi.getUserDeployments(agentId);
           if (deploymentData && deploymentData.length > 0) {
             setDeployment(deploymentData[0]);
           }
         } catch (convexErr) {
           console.error('Convex API failed:', convexErr);
-          // Try mock data as fallback
-          const mockAgent = localStorage.getItem('mockAgent');
-          if (mockAgent) {
-            const parsedAgent = JSON.parse(mockAgent);
-            setAgent(parsedAgent);
-            setDeployment({
-              _id: localStorage.getItem('mockDeploymentId') || 'deploy_mock',
-              status: 'active',
-              deploymentType: 'pwa',
-            });
-          } else {
-            throw new Error('Agent not found');
-          }
+          throw new Error('Failed to fetch agent data');
         }
         
         setLoading(false);
       } catch (err) {
         console.error('Error fetching agent:', err);
-        setError('Agent not found');
+        setError(err instanceof Error ? err.message : 'Agent not found');
         setLoading(false);
       }
     };

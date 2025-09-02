@@ -83,15 +83,21 @@ export const updateVoiceSession = mutation({
 export const getVoiceSession = query({
   args: { sessionId: v.string() },
   handler: async (ctx, args) => {
-    // Retrieve session data
-    // This would typically query a Convex table
-    // For now, return mock data
-    return {
-      id: args.sessionId,
-      mode: "wake_word",
-      currentCart: [],
-      totalAmount: 0,
-      lastActivity: Date.now()
-    };
+    // Retrieve session data from the database
+    try {
+      const session = await ctx.db
+        .query("voice_sessions")
+        .withIndex("by_session_id", (q) => q.eq("id", args.sessionId))
+        .first();
+      
+      if (!session) {
+        return null;
+      }
+      
+      return session;
+    } catch (error) {
+      console.error("Error fetching voice session:", error);
+      return null;
+    }
   }
 });

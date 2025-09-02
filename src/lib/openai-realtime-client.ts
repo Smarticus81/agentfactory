@@ -101,11 +101,32 @@ export class OpenAIRealtimeClient extends EventEmitter {
       // Create session with the agent
       this.session = new RealtimeSession(this.agent, { transport: this.transport });
 
-      // Update agent instructions and voice
+      // Update agent instructions and voice configuration
       this.agent.instructions = config.instructions;
+      // Configure voice on the agent itself
+      (this.agent as any).voice = config.voice;
       
       // Configure voice settings
       console.log(`Configuring OpenAI voice: ${config.voice}`);
+      
+      // Map old voice names to new supported ones
+      const voiceMapping: { [key: string]: string } = {
+        'Alice': 'alloy',
+        'alloy': 'alloy',
+        'ash': 'ash', 
+        'ballad': 'ballad',
+        'coral': 'coral',
+        'echo': 'echo',
+        'sage': 'sage',
+        'shimmer': 'shimmer',
+        'verse': 'verse',
+        'marin': 'marin',
+        'cedar': 'cedar'
+      };
+      
+      const mappedVoice = voiceMapping[config.voice] || 'alloy';
+      console.log(`Voice mapping: ${config.voice} → ${mappedVoice}`);
+      (this.agent as any).voice = mappedVoice;
 
       // Validate API key
       const apiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY;
@@ -129,8 +150,11 @@ export class OpenAIRealtimeClient extends EventEmitter {
       // Configure session after connection
       if (this.session) {
         // Store voice preference for later use
-        console.log(`Voice preference stored: ${config.voice || 'alloy'}`);
-        // Voice will be configured through session updates or message responses
+        console.log(`Voice preference stored: ${config.voice}`);
+        
+        // The voice and session configuration are now handled during connection
+        // No need to send session.update as it's not supported in this API version
+        console.log(`Session configured with voice: ${config.voice}`);
       }
       
       // Session configuration: agent instructions already set above.

@@ -1,41 +1,550 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { VenueOnboarding } from '@/components/venue-onboarding';
+import { useUser } from '@clerk/nextjs';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowRight, ArrowLeft, CheckCircle, Users, Building, GraduationCap, Home, Briefcase, User } from 'lucide-react';
+import Link from 'next/link';
+
+interface OnboardingData {
+  userType: 'individual' | 'family' | 'student' | 'business' | null;
+  familySize: number;
+  primaryUseCase: string[];
+  experience: 'beginner' | 'intermediate' | 'advanced' | null;
+  interests: string[];
+  goals: string[];
+  notifications: {
+    email: boolean;
+    push: boolean;
+    sms: boolean;
+  };
+}
+
+const userTypes = [
+  {
+    id: 'individual',
+    name: 'Individual',
+    description: 'Personal productivity and organization',
+    icon: User,
+    examples: ['Personal task management', 'Calendar organization', 'Email automation']
+  },
+  {
+    id: 'family',
+    name: 'Family',
+    description: 'Busy families with multiple schedules',
+    icon: Users,
+    examples: ['Family calendar sync', 'Kids activity tracking', 'Household management']
+  },
+  {
+    id: 'student',
+    name: 'Student',
+    description: 'Academic organization and study help',
+    icon: GraduationCap,
+    examples: ['Homework tracking', 'Study schedules', 'Assignment reminders']
+  },
+  {
+    id: 'business',
+    name: 'Business',
+    description: 'Small business and team coordination',
+    icon: Building,
+    examples: ['Team scheduling', 'Client management', 'Business automation']
+  }
+];
+
+const useCases = [
+  'Email management and automation',
+  'Calendar scheduling and coordination',
+  'Task and project management',
+  'Voice-controlled assistance',
+  'Family activity coordination',
+  'Academic planning and tracking',
+  'Business process automation',
+  'Personal knowledge management'
+];
+
+const goals = [
+  'Save time on daily tasks',
+  'Better family organization',
+  'Improve productivity',
+  'Reduce email overload',
+  'Never miss important events',
+  'Streamline communication',
+  'Automate routine tasks',
+  'Stay on top of responsibilities'
+];
 
 export default function OnboardingPage() {
   const router = useRouter();
-  const [isComplete, setIsComplete] = useState(false);
+  const { user, isLoaded } = useUser();
+  
+  const [currentStep, setCurrentStep] = useState(1);
+  const [isCompleting, setIsCompleting] = useState(false);
+  const [onboardingData, setOnboardingData] = useState<OnboardingData>({
+    userType: null,
+    familySize: 1,
+    primaryUseCase: [],
+    experience: null,
+    interests: [],
+    goals: [],
+    notifications: {
+      email: true,
+      push: true,
+      sms: false
+    }
+  });
 
-  const handleComplete = (venueInfo: any) => {
-    setIsComplete(true);
-    // Redirect to dashboard after a brief delay
-    setTimeout(() => {
+  useEffect(() => {
+    if (isLoaded && !user) {
+      router.push('/sign-in');
+    }
+  }, [isLoaded, user, router]);
+
+  const handleNext = () => {
+    if (currentStep < 5) {
+      setCurrentStep(currentStep + 1);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
+    }
+  };
+
+  const handleComplete = async () => {
+    if (!user?.id) return;
+    
+    setIsCompleting(true);
+    
+    try {
+      // TODO: Save onboarding data to user profile
+      console.log('Saving onboarding data:', onboardingData);
+      
+      // For now, just navigate to dashboard
       router.push('/dashboard');
-    }, 2000);
+    } catch (error) {
+      console.error('Error completing onboarding:', error);
+      alert('Failed to complete onboarding. Please try again.');
+    } finally {
+      setIsCompleting(false);
+    }
   };
 
-  const handleSkip = () => {
-    router.push('/dashboard');
+  const canProceed = () => {
+    switch (currentStep) {
+      case 1: return onboardingData.userType !== null;
+      case 2: return onboardingData.primaryUseCase.length > 0;
+      case 3: return onboardingData.experience !== null;
+      case 4: return onboardingData.goals.length > 0;
+      case 5: return true;
+      default: return false;
+    }
   };
 
-  if (isComplete) {
+  if (!isLoaded) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950 flex items-center justify-center">
-        <div className="text-center space-y-6">
-          <div className="text-6xl mb-4">🎉</div>
-          <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">Welcome to BevPro Studio!</h1>
-          <p className="text-slate-600 dark:text-slate-400">Redirecting you to your dashboard...</p>
-          <div className="w-16 h-1 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-full mx-auto"></div>
-        </div>
+      <div className="min-h-screen bg-canvas flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-accent"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-950 dark:via-slate-900 dark:to-slate-950">
-      <VenueOnboarding onComplete={handleComplete} onSkip={handleSkip} />
+    <div className="min-h-screen bg-canvas">
+      <div className="max-w-4xl mx-auto px-6 py-12">
+        {/* Header */}
+        <div className="mb-12">
+          <Link href="/" className="inline-flex items-center text-text-secondary hover:text-accent mb-8">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </Link>
+          
+          <h1 className="text-h1 font-bold text-text-primary dark:text-text-primary-dark mb-2">
+            Welcome to FamilyAI
+          </h1>
+          <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+            Let's personalize your experience and set up your account
+          </p>
+        </div>
+
+        {/* Progress */}
+        <div className="flex items-center justify-center mb-12">
+          <div className="flex items-center space-x-4">
+            {['Profile', 'Use Cases', 'Experience', 'Goals', 'Preferences'].map((label, idx) => {
+              const step = idx + 1;
+              return (
+                <div key={step} className="flex items-center">
+                  <div className="flex flex-col items-center">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium mb-2 ${
+                      step <= currentStep 
+                        ? 'bg-accent text-white' 
+                        : 'bg-panel border border-hairline text-text-secondary'
+                    }`}>
+                      {step < currentStep ? <CheckCircle className="w-5 h-5" /> : step}
+                    </div>
+                    <span className="text-small text-text-secondary">{label}</span>
+                  </div>
+                  {step < 5 && (
+                    <div className={`w-16 h-px mx-2 ${
+                      step < currentStep ? 'bg-accent' : 'bg-border'
+                    }`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Step Content */}
+        <AnimatePresence mode="wait">
+          {/* Step 1: User Type */}
+          {currentStep === 1 && (
+            <motion.div
+              key="step1"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              <div className="text-center mb-8">
+                <h2 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-2">
+                  Tell us about yourself
+                </h2>
+                <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+                  This helps us customize your experience
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+                {userTypes.map((type) => (
+                  <button
+                    key={type.id}
+                    onClick={() => setOnboardingData({ ...onboardingData, userType: type.id as any })}
+                    className={`card-base p-6 text-left transition-all ${
+                      onboardingData.userType === type.id 
+                        ? 'ring-2 ring-accent ring-offset-4' 
+                        : 'hover:-translate-y-1'
+                    }`}
+                  >
+                    <div className="w-12 h-12 bg-accent-light rounded-lg flex items-center justify-center mb-4">
+                      <type.icon className="w-6 h-6 text-accent" />
+                    </div>
+                    <h3 className="text-h3 font-semibold text-text-primary dark:text-text-primary-dark mb-2">
+                      {type.name}
+                    </h3>
+                    <p className="text-body text-text-secondary dark:text-text-secondary-dark mb-4">
+                      {type.description}
+                    </p>
+                    <ul className="space-y-1">
+                      {type.examples.map((example, idx) => (
+                        <li key={idx} className="text-small text-text-secondary dark:text-text-secondary-dark">
+                          • {example}
+                        </li>
+                      ))}
+                    </ul>
+                  </button>
+                ))}
+              </div>
+
+              {onboardingData.userType === 'family' && (
+                <div className="max-w-md mx-auto mt-8">
+                  <div className="card-base p-6">
+                    <label className="block text-body font-medium text-text-primary dark:text-text-primary-dark mb-2">
+                      Family Size
+                    </label>
+                    <select
+                      value={onboardingData.familySize}
+                      onChange={(e) => setOnboardingData({ ...onboardingData, familySize: parseInt(e.target.value) })}
+                      className="w-full"
+                    >
+                      {[1, 2, 3, 4, 5, 6, 7, 8].map((size) => (
+                        <option key={size} value={size}>
+                          {size} {size === 1 ? 'person' : 'people'}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          {/* Step 2: Primary Use Cases */}
+          {currentStep === 2 && (
+            <motion.div
+              key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              <div className="text-center mb-8">
+                <h2 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-2">
+                  What would you like help with?
+                </h2>
+                <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+                  Select all that apply - this helps us recommend the right features
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                {useCases.map((useCase) => (
+                  <button
+                    key={useCase}
+                    onClick={() => {
+                      const isSelected = onboardingData.primaryUseCase.includes(useCase);
+                      if (isSelected) {
+                        setOnboardingData({
+                          ...onboardingData,
+                          primaryUseCase: onboardingData.primaryUseCase.filter(u => u !== useCase)
+                        });
+                      } else {
+                        setOnboardingData({
+                          ...onboardingData,
+                          primaryUseCase: [...onboardingData.primaryUseCase, useCase]
+                        });
+                      }
+                    }}
+                    className={`card-base p-4 text-left transition-all ${
+                      onboardingData.primaryUseCase.includes(useCase)
+                        ? 'ring-2 ring-accent ring-offset-2 bg-accent-light'
+                        : 'hover:-translate-y-1'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-body text-text-primary dark:text-text-primary-dark">
+                        {useCase}
+                      </span>
+                      {onboardingData.primaryUseCase.includes(useCase) && (
+                        <CheckCircle className="w-5 h-5 text-accent" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Step 3: Experience Level */}
+          {currentStep === 3 && (
+            <motion.div
+              key="step3"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              <div className="text-center mb-8">
+                <h2 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-2">
+                  What's your experience with AI assistants?
+                </h2>
+                <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+                  This helps us provide the right level of guidance
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto">
+                {[
+                  { id: 'beginner', label: 'Beginner', description: 'New to AI assistants' },
+                  { id: 'intermediate', label: 'Intermediate', description: 'Some experience with AI tools' },
+                  { id: 'advanced', label: 'Advanced', description: 'Very familiar with AI assistants' }
+                ].map((level) => (
+                  <button
+                    key={level.id}
+                    onClick={() => setOnboardingData({ ...onboardingData, experience: level.id as any })}
+                    className={`card-base p-6 text-center transition-all ${
+                      onboardingData.experience === level.id 
+                        ? 'ring-2 ring-accent ring-offset-4' 
+                        : 'hover:-translate-y-1'
+                    }`}
+                  >
+                    <h3 className="text-h3 font-semibold text-text-primary dark:text-text-primary-dark mb-2">
+                      {level.label}
+                    </h3>
+                    <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+                      {level.description}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Step 4: Goals */}
+          {currentStep === 4 && (
+            <motion.div
+              key="step4"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              <div className="text-center mb-8">
+                <h2 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-2">
+                  What are your main goals?
+                </h2>
+                <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+                  Select the outcomes you're hoping to achieve
+                </p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4 max-w-4xl mx-auto">
+                {goals.map((goal) => (
+                  <button
+                    key={goal}
+                    onClick={() => {
+                      const isSelected = onboardingData.goals.includes(goal);
+                      if (isSelected) {
+                        setOnboardingData({
+                          ...onboardingData,
+                          goals: onboardingData.goals.filter(g => g !== goal)
+                        });
+                      } else {
+                        setOnboardingData({
+                          ...onboardingData,
+                          goals: [...onboardingData.goals, goal]
+                        });
+                      }
+                    }}
+                    className={`card-base p-4 text-left transition-all ${
+                      onboardingData.goals.includes(goal)
+                        ? 'ring-2 ring-accent ring-offset-2 bg-accent-light'
+                        : 'hover:-translate-y-1'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="text-body text-text-primary dark:text-text-primary-dark">
+                        {goal}
+                      </span>
+                      {onboardingData.goals.includes(goal) && (
+                        <CheckCircle className="w-5 h-5 text-accent" />
+                      )}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+
+          {/* Step 5: Notification Preferences */}
+          {currentStep === 5 && (
+            <motion.div
+              key="step5"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              <div className="text-center mb-8">
+                <h2 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-2">
+                  Notification Preferences
+                </h2>
+                <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+                  Choose how you'd like to receive updates and reminders
+                </p>
+              </div>
+
+              <div className="max-w-2xl mx-auto">
+                <div className="card-base p-8 space-y-6">
+                  {[
+                    { key: 'email', label: 'Email Notifications', description: 'Important updates and summaries' },
+                    { key: 'push', label: 'Push Notifications', description: 'Real-time alerts and reminders' },
+                    { key: 'sms', label: 'SMS Notifications', description: 'Critical alerts via text message' }
+                  ].map((notif) => (
+                    <div key={notif.key} className="flex items-center justify-between p-4 bg-panel rounded-lg">
+                      <div>
+                        <h4 className="font-medium text-text-primary dark:text-text-primary-dark">
+                          {notif.label}
+                        </h4>
+                        <p className="text-small text-text-secondary dark:text-text-secondary-dark">
+                          {notif.description}
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={onboardingData.notifications[notif.key as keyof typeof onboardingData.notifications]}
+                          onChange={(e) => setOnboardingData({
+                            ...onboardingData,
+                            notifications: {
+                              ...onboardingData.notifications,
+                              [notif.key]: e.target.checked
+                            }
+                          })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
+                      </label>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Summary */}
+                <div className="card-base p-6 mt-8">
+                  <h3 className="font-medium text-text-primary dark:text-text-primary-dark mb-4">
+                    You're all set!
+                  </h3>
+                  <div className="space-y-2 text-small">
+                    <p className="text-text-secondary dark:text-text-secondary-dark">
+                      <strong>Profile:</strong> {onboardingData.userType} 
+                      {onboardingData.userType === 'family' && ` (${onboardingData.familySize} people)`}
+                    </p>
+                    <p className="text-text-secondary dark:text-text-secondary-dark">
+                      <strong>Use cases:</strong> {onboardingData.primaryUseCase.length} selected
+                    </p>
+                    <p className="text-text-secondary dark:text-text-secondary-dark">
+                      <strong>Experience:</strong> {onboardingData.experience}
+                    </p>
+                    <p className="text-text-secondary dark:text-text-secondary-dark">
+                      <strong>Goals:</strong> {onboardingData.goals.length} selected
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Navigation Buttons */}
+        <div className="flex justify-between max-w-2xl mx-auto mt-12">
+          <button
+            onClick={handleBack}
+            className={`btn-ghost ${currentStep === 1 ? 'invisible' : ''}`}
+            disabled={currentStep === 1}
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Back
+          </button>
+
+          {currentStep < 5 ? (
+            <button
+              onClick={handleNext}
+              disabled={!canProceed()}
+              className="btn-primary flex items-center gap-2"
+            >
+              Next
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={handleComplete}
+              disabled={isCompleting || !canProceed()}
+              className="btn-primary flex items-center gap-2"
+            >
+              {isCompleting ? 'Completing...' : 'Complete Setup'}
+              {!isCompleting && <ArrowRight className="w-4 h-4" />}
+            </button>
+          )}
+        </div>
+
+        {/* Skip Link */}
+        <div className="text-center mt-8">
+          <Link href="/dashboard" className="text-small text-text-secondary hover:text-accent">
+            Skip onboarding
+          </Link>
+        </div>
+      </div>
     </div>
   );
 }

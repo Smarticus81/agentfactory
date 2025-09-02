@@ -108,10 +108,9 @@ export default function DocumentsPage() {
     poll();
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file || !user || !selectedAgentId) return;
-
+  const handleFileUpload = async (file: File) => {
+    if (!user || !selectedAgentId) return;
+    
     setUploading(true);
     setUploadProgress(0);
     setError(null);
@@ -123,58 +122,80 @@ export default function DocumentsPage() {
       formData.append('agentId', selectedAgentId);
       formData.append('userId', user.id);
 
-      // Simulate upload progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => Math.min(prev + 10, 90));
-      }, 200);
-
-      const response = await fetch('/api/documents', {
-        method: 'POST',
-        body: formData,
+      // Create XMLHttpRequest to track real upload progress
+      const xhr = new XMLHttpRequest();
+      
+      xhr.upload.addEventListener('progress', (event) => {
+        if (event.lengthComputable) {
+          const progress = Math.round((event.loaded / event.total) * 100);
+          setUploadProgress(progress);
+        }
       });
 
-      clearInterval(progressInterval);
-      setUploadProgress(100);
+      xhr.addEventListener('load', async () => {
+        if (xhr.status === 200) {
+          try {
+            const result = JSON.parse(xhr.responseText);
+            const newDoc = result.document;
+            
+            // Add to processing set if not fully processed
+            if (!newDoc.hasEmbeddings) {
+              setProcessingDocuments(prev => new Set([...prev, newDoc.id]));
+            }
+            
+            setDocuments(prev => [...prev, newDoc]);
+            setSuccess(`Document "${file.name}" uploaded successfully!`);
+            
+            // Start polling for processing completion if needed
+            if (!newDoc.hasEmbeddings) {
+              pollDocumentStatus(newDoc.id);
+            }
+          
+            // Reload documents to show the new upload
+            await loadDocuments();
+            
+            // Reset file input
+            if (fileInputRef.current) {
+              fileInputRef.current.value = '';
+            }
+          } catch (error) {
+            console.error('Error parsing response:', error);
+            setError('Upload completed but failed to process response');
+          }
+        } else {
+          setError(`Upload failed with status: ${xhr.status}`);
+        }
+        setUploading(false);
+        setUploadProgress(0);
+      });
 
-      if (response.ok) {
-        const result = await response.json();
-        const newDoc = result.document;
-        
-        // Add to processing set if not fully processed
-        if (!newDoc.hasEmbeddings) {
-          setProcessingDocuments(prev => new Set([...prev, newDoc.id]));
-        }
-        
-        setDocuments(prev => [...prev, newDoc]);
-        setSuccess(`Document "${file.name}" uploaded successfully!`);
-        
-        // Start polling for processing completion if needed
-        if (!newDoc.hasEmbeddings) {
-          pollDocumentStatus(newDoc.id);
-        }
-      
-      // Reload documents to show the new upload
-      await loadDocuments();
-      
-      // Reset file input
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Upload failed');
-      }
+      xhr.addEventListener('error', () => {
+        setError('Upload failed due to network error');
+        setUploading(false);
+        setUploadProgress(0);
+      });
+
+      xhr.addEventListener('abort', () => {
+        setError('Upload was cancelled');
+        setUploading(false);
+        setUploadProgress(0);
+      });
+
+      xhr.open('POST', '/api/documents');
+      xhr.send(formData);
+
     } catch (error) {
       console.error('Upload error:', error);
       setError(error instanceof Error ? error.message : 'Upload failed');
-    } finally {
       setUploading(false);
-      setTimeout(() => {
-        setUploadProgress(0);
-        setError(null);
-        setSuccess(null);
-      }, 3000);
+      setUploadProgress(0);
     }
+
+    // Clear messages after 3 seconds
+    setTimeout(() => {
+      setError(null);
+      setSuccess(null);
+    }, 3000);
   };
 
   const handleDeleteDocument = async (documentId: string, filename: string) => {
@@ -264,7 +285,12 @@ export default function DocumentsPage() {
                 id="file"
                 type="file"
                 ref={fileInputRef}
-                onChange={handleFileUpload}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleFileUpload(file);
+                  }
+                }}
                 disabled={uploading || !selectedAgentId}
                 accept=".pdf,.txt,.doc,.docx,.md,.json"
               />

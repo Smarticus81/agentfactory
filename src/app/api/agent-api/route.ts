@@ -1,4 +1,6 @@
 import { NextRequest } from "next/server";
+import { convex } from '@/lib/convex';
+import { api } from '../../../../convex/_generated/api';
 
 export const runtime = "edge";
 
@@ -18,11 +20,32 @@ export async function POST(request: Request) {
 
     // Try to get agent configuration from Convex or localStorage
     let agentConfig = null;
+    let relevantKnowledge = '';
+    let knowledgeResults: any[] = [];
+    
     try {
       // Import convexApi dynamically to avoid edge runtime issues
       const { convexApi } = await import('@/lib/convex-api');
       const agents = await convexApi.getUserAgents('any'); // We'll filter by agentId
       agentConfig = agents.find((a: any) => a._id === agentId);
+
+      // Query knowledge base for relevant information
+      try {
+        knowledgeResults = await convex.query(api.knowledge.queryKnowledge, {
+          userId: (agentConfig as any)?.ownerId || 'unknown',
+          query: message,
+          sourceTypes: ['document'],
+          limit: 3,
+        });
+
+        if (knowledgeResults && knowledgeResults.length > 0) {
+          relevantKnowledge = knowledgeResults
+            .map((item: any) => `${item.title}:\n${item.content.substring(0, 500)}...`)
+            .join('\n\n');
+        }
+      } catch (knowledgeError) {
+        console.log('Could not query knowledge base:', knowledgeError);
+      }
     } catch (error) {
       console.log('Could not fetch agent config from Convex, using default');
     }
@@ -31,10 +54,17 @@ export async function POST(request: Request) {
     if (!agentConfig) {
       agentConfig = {
         name: 'Voice Agent',
-        customInstructions: 'You are a helpful voice agent for event venues and venue bars. Respond concisely and naturally as if speaking to someone. Keep responses under 100 words.',
-        context: 'Event venue and venue bar operations',
+        customInstructions: 'You are a helpful AI assistant for families and personal organization. Respond concisely and naturally as if speaking to someone. Keep responses under 100 words.',
+        context: 'Family organization and personal assistance',
         voiceConfig: { voice: 'alloy' }
       };
+    }
+
+    // Build system message with knowledge context
+    let systemMessage = `You are ${agentConfig.name}, an AI assistant for families and personal organization. ${agentConfig.customInstructions || 'Respond concisely and naturally as if speaking to someone. Keep responses under 100 words.'}`;
+
+    if (relevantKnowledge) {
+      systemMessage += `\n\nRelevant information from uploaded documents:\n${relevantKnowledge}\n\nUse this information to provide more accurate and personalized responses when relevant to the user's question.`;
     }
 
     // Use the best model (gpt-4o) for voice interactions
@@ -49,7 +79,7 @@ export async function POST(request: Request) {
         messages: [
           {
             role: "system",
-            content: `You are ${agentConfig.name}, a voice agent for event venues and venue bars. ${agentConfig.customInstructions || 'Respond concisely and naturally as if speaking to someone. Keep responses under 100 words.'}`
+            content: systemMessage
           },
           {
             role: "user",
@@ -76,7 +106,9 @@ export async function POST(request: Request) {
       deploymentId,
       timestamp: new Date().toISOString(),
       model: "gpt-4o",
-      usage: result.usage
+      usage: result.usage,
+      hasKnowledge: !!relevantKnowledge,
+      knowledgeUsed: relevantKnowledge ? knowledgeResults.length : 0
     });
   } catch (error) {
     console.error("Error processing agent request:", error);

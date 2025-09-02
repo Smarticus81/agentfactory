@@ -30,7 +30,7 @@ function hexToHsl(hex: string) {
 
 interface StreamlinedVoiceInterfaceProps {
   agentName: string;
-  agentType: 'Event Venue' | 'Venue Bar' | 'Venue Voice';
+  agentType: 'Family Assistant' | 'Personal Admin' | 'Student Helper';
   primaryColor?: string;
   secondaryColor?: string;
   customization?: {
@@ -39,9 +39,9 @@ interface StreamlinedVoiceInterfaceProps {
     components?: string[];
     specialFeatures?: string[];
   };
-  voiceProvider?: string;
-  selectedVoice?: string;
-  wakeWords?: string[];
+  voiceProvider: string;
+  selectedVoice: string;
+  wakeWords: string[];
   onboardingComplete?: boolean;
   user: any; // Add user prop
 }
@@ -52,24 +52,34 @@ const StreamlinedVoiceInterface = memo(({
   primaryColor = '#10a37f',
   secondaryColor = '#059669',
   customization = {},
-  voiceProvider = 'openai',
-  selectedVoice = 'alloy',
-  wakeWords = ['hey bev', 'hey venue', 'hey bar'],
+  voiceProvider,
+  selectedVoice,
+  wakeWords,
   onboardingComplete = false,
   user, // Add user prop
 }: StreamlinedVoiceInterfaceProps) => {
+  // Debug logging to see what voice settings are being passed
+  console.log('StreamlinedVoiceInterface received props:', {
+    voiceProvider,
+    selectedVoice,
+    wakeWords,
+    agentName
+  });
+
   const [showSettings, setShowSettings] = useState(false);
-  const [currentProvider, setCurrentProvider] = useState(voiceProvider || 'openai');
-  const [currentVoice, setCurrentVoice] = useState(selectedVoice || 'alloy');
+  const [currentProvider, setCurrentProvider] = useState(voiceProvider);
+  const [currentVoice, setCurrentVoice] = useState(selectedVoice);
+  const [fallbackNotification, setFallbackNotification] = useState<string | null>(null);
 
   const {
     isConnected,
     isListening,
-    mode,
     transcript,
     response,
+    mode,
     error,
     connectionStatus,
+    currentProvider: actualCurrentProvider,
     connect,
     disconnect,
     startListening,
@@ -138,6 +148,44 @@ const StreamlinedVoiceInterface = memo(({
     updateVisualization();
   };
 
+  // Monitor for provider changes to show fallback notifications
+  useEffect(() => {
+    if (actualCurrentProvider && actualCurrentProvider !== voiceProvider) {
+      // Show fallback notification
+      const providerNames = {
+        'openai': 'OpenAI',
+        'elevenlabs': 'ElevenLabs',
+        'google': 'Google Cloud',
+        'playht': 'PlayHT',
+        'browser-tts': 'Browser Voice'
+      };
+      
+      const originalName = providerNames[voiceProvider as keyof typeof providerNames] || voiceProvider;
+      const fallbackName = providerNames[actualCurrentProvider as keyof typeof providerNames] || actualCurrentProvider;
+      
+      let message;
+      if (actualCurrentProvider === 'browser-tts') {
+        message = `Using ${fallbackName} instead of ${originalName} (voice service unavailable)`;
+      } else if (actualCurrentProvider === 'openai' && voiceProvider !== 'openai') {
+        message = `Using ${fallbackName} voice instead of ${originalName} (API key may be missing)`;
+      } else {
+        message = `Switched to ${fallbackName} voice provider`;
+      }
+      
+      setFallbackNotification(message);
+      
+      // Update local provider state
+      setCurrentProvider(actualCurrentProvider);
+      
+      // Clear notification after 5 seconds
+      const timer = setTimeout(() => {
+        setFallbackNotification(null);
+      }, 5000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [actualCurrentProvider, voiceProvider]);
+
   // Cleanup
   useEffect(() => {
     return () => {
@@ -161,11 +209,17 @@ const StreamlinedVoiceInterface = memo(({
       
       if (!isConnected) {
         console.log('Connecting to voice services...');
+        console.log('Voice configuration being used:', {
+          provider: voiceProvider,
+          voice: selectedVoice,
+          wakeWords: wakeWords
+        });
+        
         await connect({
           agentName,
           wakeWords: wakeWords,
           provider: voiceProvider as any,
-          voice: selectedVoice || 'alloy',
+          voice: selectedVoice, // Use selectedVoice directly without fallback
           instructions: `You are ${agentName}, a professional ${agentType} assistant. Be helpful, concise, and friendly. Please respond only in English.`,
           temperature: 0.7,
           enableTools: voiceProvider === 'openai', // Only enable tools for OpenAI provider
@@ -191,6 +245,23 @@ const StreamlinedVoiceInterface = memo(({
       {/* Ambient Background Effects */}
       <div className="absolute inset-0 bg-gradient-radial from-purple-500/20 via-transparent to-transparent animate-pulse" />
       <div className="absolute inset-0 bg-[url('/grid.svg')] opacity-10" />
+      
+      {/* Fallback Notification */}
+      <AnimatePresence>
+        {fallbackNotification && (
+          <motion.div
+            initial={{ opacity: 0, y: -50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -50 }}
+            className="absolute top-4 left-4 right-4 z-50 bg-amber-500/90 backdrop-blur-sm text-white px-4 py-3 rounded-lg border border-amber-400/50 shadow-lg"
+          >
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-amber-200 rounded-full animate-pulse" />
+              <p className="text-sm font-medium">{fallbackNotification}</p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       
       {/* Main Content Container */}
       <div className="relative z-10 w-full max-w-md mx-auto px-6 flex flex-col items-center justify-center min-h-screen">

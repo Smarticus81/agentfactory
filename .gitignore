@@ -51,3 +51,22 @@ Thumbs.db
 
 # Environment files
 .env.production
+
+# Test and debug files with sensitive data
+test-*.js
+get-voices.js
+*-test.js
+
+# Backup files
+*.bak
+*.disabled
+
+# Cache directories
+.pytest_cache/
+__pycache__/
+
+# Upload directories (keep structure but ignore content)
+public/uploads/*
+!public/uploads/.gitkeep
+public/docs/*
+!public/docs/.gitkeep

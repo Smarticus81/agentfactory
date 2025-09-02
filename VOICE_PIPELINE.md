@@ -85,7 +85,7 @@ speechSynthesis.speak(utterance);
 ## 🚀 Deployment Process
 
 ### **1. Agent Creation**
-1. User creates agent in Bevpro Studio
+1. User creates agent in FamilyAI Studio
 2. Agent configuration is saved to Convex database
 3. Default instructions are applied based on agent type
 
@@ -97,7 +97,7 @@ speechSynthesis.speak(utterance);
 
 ### **3. Vercel Deployment**
 1. Application is deployed to Vercel under Smarticus81 account
-2. URL format: `https://bevpro-agent-{agentId}.vercel.app`
+2. URL format: `https://familyai-agent-{agentId}.vercel.app`
 3. Environment variables are set during deployment
 
 ## 🔗 Connection Points

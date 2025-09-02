@@ -30,7 +30,7 @@ function levenshteinDistance(a, b) {
   return matrix[b.length][a.length];
 }
 
-let wakeWord = "hey venue";
+let wakeWord = "hey family";
 let threshold = 2;
 let lastDetection = 0;
 const DETECTION_WINDOW = 1200; // 1.2 seconds

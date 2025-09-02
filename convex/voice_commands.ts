@@ -254,8 +254,18 @@ async function processProductOrder(command: string, sessionId: string): Promise<
 export const getCommandHistory = query({
   args: { sessionId: v.string() },
   handler: async (ctx, args) => {
-    // This would typically query a Convex table
-    // For now, return mock data
-    return [];
+    // Query command history from the database
+    try {
+      const commands = await ctx.db
+        .query("voice_commands")
+        .withIndex("by_session", (q) => q.eq("sessionId", args.sessionId))
+        .order("desc")
+        .collect();
+      
+      return commands;
+    } catch (error) {
+      console.error("Error fetching command history:", error);
+      return [];
+    }
   }
 });
