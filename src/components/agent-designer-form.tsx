@@ -221,12 +221,10 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            <div className="text-center mb-8">
-              <h2 className="text-h2 font-bold text-text-primary mb-2">Choose Assistant Type</h2>
-              <p className="text-text-secondary">Select the type that best fits your needs</p>
-            </div>
-
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          <div className="text-center mb-8">
+            <h2 className="text-h2 font-bold text-text-primary mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>Choose Assistant Type</h2>
+            <p className="text-text-secondary" style={{ fontFamily: 'Inter, sans-serif' }}>Select the type that best fits your needs</p>
+          </div>            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
               {assistantTypes.map((type) => (
                 <motion.div
                   key={type.id}
@@ -264,10 +262,10 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                     assistantConfig.type === type.id
                       ? 'text-orange-600 dark:text-orange-400'
                       : 'text-slate-900 dark:text-white group-hover:text-orange-600 dark:group-hover:text-orange-400'
-                  }`}>
+                  }`} style={{ fontFamily: 'Inter, sans-serif' }}>
                     {type.name}
                   </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4 leading-relaxed" style={{ fontFamily: 'Inter, sans-serif' }}>
                     {type.description}
                   </p>
                   
@@ -277,7 +275,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                         <div className={`w-1.5 h-1.5 rounded-full ${
                           assistantConfig.type === type.id ? 'bg-orange-500' : 'bg-slate-400'
                         }`} />
-                        <span className="text-xs text-slate-600 dark:text-slate-400">{feature}</span>
+                        <span className="text-xs text-slate-600 dark:text-slate-400" style={{ fontFamily: 'Inter, sans-serif' }}>{feature}</span>
                       </div>
                     ))}
                     {type.features.length > 2 && (

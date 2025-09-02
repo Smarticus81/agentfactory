@@ -100,6 +100,7 @@ export default function MinimalistAgentInterface({
     }
 
     try {
+      // @ts-ignore - TypeScript issue with Uint8Array types
       analyser.getByteFrequencyData(dataArray);
     } catch (error) {
       console.warn('Audio analysis error:', error);
@@ -278,7 +279,7 @@ export default function MinimalistAgentInterface({
       microphone.connect(analyser);
       
       const bufferLength = analyser.frequencyBinCount;
-      const dataArray = new Uint8Array(bufferLength);
+      const dataArray = new Uint8Array(new ArrayBuffer(bufferLength));
       
       audioContextRef.current = {
         context: audioContext,

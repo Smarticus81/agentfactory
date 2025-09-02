@@ -1,123 +1,270 @@
 "use client";
 
-import { useState, useEffect } from 'react';
-import DashboardLayout from '@/components/dashboard-layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, AlertCircle } from 'lucide-react';
+import { useState, useEffect } from "react";
+import { useUser } from "@clerk/nextjs";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Clock, Mail, Search, Calendar, Globe, TrendingUp, TrendingDown, Activity } from "lucide-react";
+import DashboardLayout from "@/components/dashboard-layout";
+import { usageTracker, initializeMockUsage } from "@/lib/usage-tracker";
+
+// Plan limits configuration
+const PLAN_LIMITS = {
+  free: {
+    voice_minutes: 30,
+    email_sends: 10,
+    rag_queries: 50,
+    web_searches: 20,
+    calendar_events: 25
+  },
+  pro: {
+    voice_minutes: 300,
+    email_sends: 100,
+    rag_queries: 500,
+    web_searches: 200,
+    calendar_events: 250
+  },
+  pro_plus: {
+    voice_minutes: 1000,
+    email_sends: 500,
+    rag_queries: 2000,
+    web_searches: 1000,
+    calendar_events: 1000
+  },
+  premium: {
+    voice_minutes: -1, // unlimited
+    email_sends: -1,
+    rag_queries: -1,
+    web_searches: -1,
+    calendar_events: -1
+  }
+};
 
 interface UsageData {
-  currentMonth: {
-    calls: number;
-    messages: number;
-    aiMinutes: number;
-    cost: number;
-  };
-  lastMonth: {
-    calls: number;
-    messages: number;
-    aiMinutes: number;
-    cost: number;
-  };
-  limits: {
-    calls: number;
-    messages: number;
-    aiMinutes: number;
-    cost: number;
-  };
+  voice_minutes: number;
+  email_sends: number;
+  rag_queries: number;
+  web_searches: number;
+  calendar_events: number;
 }
 
-interface Addon {
-  name: string;
-  description: string;
-  cost: number;
-  status: string;
-  usage: number;
-}
-
-interface CostBreakdown {
+interface Activity {
   category: string;
   amount: number;
-  percentage: number;
-}
-
-interface UsageHistory {
-  month: string;
-  calls: number;
-  messages: number;
-  cost: number;
+  unit: string;
+  occurredAt: string;
+  metadata?: any;
 }
 
 export default function UsagePage() {
-  const [usageData, setUsageData] = useState<UsageData | null>(null);
-  const [activeAddons, setActiveAddons] = useState<Addon[]>([]);
-  const [costBreakdown, setCostBreakdown] = useState<CostBreakdown[]>([]);
-  const [usageHistory, setUsageHistory] = useState<UsageHistory[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useUser();
+  const [currentPlan] = useState<keyof typeof PLAN_LIMITS>("free");
+  const [isLoading, setIsLoading] = useState(true);
+  const [aggregatedUsage, setAggregatedUsage] = useState<UsageData>({
+    voice_minutes: 0,
+    email_sends: 0,
+    rag_queries: 0,
+    web_searches: 0,
+    calendar_events: 0
+  });
+  const [recentActivities, setRecentActivities] = useState<Activity[]>([]);
+  const [monthlyData, setMonthlyData] = useState({
+    currentMonth: {
+      calls: 0,
+      messages: 0,
+      cost: 0
+    },
+    lastMonth: {
+      calls: 0,
+      messages: 0,
+      cost: 0
+    }
+  });
 
   useEffect(() => {
-    const fetchUsageData = async () => {
-      try {
-        setLoading(true);
-        
-        // Fetch usage data from your backend
-        const response = await fetch('/api/usage');
-        if (response.ok) {
-          const data = await response.json();
-          setUsageData(data.usageData);
-          setActiveAddons(data.activeAddons || []);
-          setCostBreakdown(data.costBreakdown || []);
-          setUsageHistory(data.usageHistory || []);
-        } else {
-          console.error('Failed to fetch usage data');
-          setError('Failed to load usage data');
+    if (user?.id) {
+      // Initialize mock data if needed
+      initializeMockUsage(user.id);
+      
+      // Load real usage data
+      const usage = usageTracker.getUserUsage(user.id);
+      setAggregatedUsage({
+        voice_minutes: usage.voice_minutes || 0,
+        email_sends: usage.email_sends || 0,
+        rag_queries: usage.rag_queries || 0,
+        web_searches: usage.web_searches || 0,
+        calendar_events: usage.calendar_events || 0
+      });
+
+      // Load recent activities
+      const activities = usageTracker.getRecentActivity(user.id, 5);
+      const formattedActivities = activities.map(activity => ({
+        category: activity.category.replace('_', ' ').toUpperCase(),
+        amount: activity.amount,
+        unit: getUnitForCategory(activity.category),
+        occurredAt: activity.metadata?.timestamp || new Date().toISOString(),
+        metadata: activity.metadata
+      }));
+      setRecentActivities(formattedActivities);
+
+      // Calculate monthly data
+      const totalVoiceMinutes = usage.voice_minutes || 0;
+      const totalMessages = (usage.email_sends || 0) + (usage.rag_queries || 0);
+      const estimatedCost = calculateEstimatedCost(usage);
+
+      setMonthlyData({
+        currentMonth: {
+          calls: totalVoiceMinutes,
+          messages: totalMessages,
+          cost: estimatedCost
+        },
+        lastMonth: {
+          calls: Math.floor(totalVoiceMinutes * 0.7), // Mock last month data
+          messages: Math.floor(totalMessages * 0.8),
+          cost: estimatedCost * 0.75
         }
-      } catch (err) {
-        console.error('Error fetching usage data:', err);
-        setError('Failed to load usage data');
-      } finally {
-        setLoading(false);
-      }
+      });
+
+      setIsLoading(false);
+    }
+  }, [user?.id]);
+
+  const getUnitForCategory = (category: string): string => {
+    switch (category) {
+      case "voice_minutes": return "minutes";
+      case "email_sends": return "emails";
+      case "rag_queries": return "queries";
+      case "web_searches": return "searches";
+      case "calendar_events": return "events";
+      default: return "items";
+    }
+  };
+
+  const calculateEstimatedCost = (usage: Record<string, number>): number => {
+    const costs = {
+      voice_minutes: (usage.voice_minutes || 0) * 0.10,
+      email_sends: (usage.email_sends || 0) * 0.01,
+      rag_queries: (usage.rag_queries || 0) * 0.001,
+      web_searches: (usage.web_searches || 0) * 0.005,
+      calendar_events: (usage.calendar_events || 0) * 0.02
     };
+    
+    return Object.values(costs).reduce((sum, cost) => sum + cost, 0);
+  };
 
-    fetchUsageData();
-  }, []);
-
-  const getUsagePercentage = (current: number, limit: number) => {
-    return Math.min((current / limit) * 100, 100);
+  const getUsagePercentage = (used: number, category: keyof typeof PLAN_LIMITS.free) => {
+    const limit = PLAN_LIMITS[currentPlan][category];
+    if (limit === -1) return 0; // Unlimited
+    return Math.min((used / limit) * 100, 100);
   };
 
   const getUsageColor = (percentage: number) => {
-    if (percentage >= 90) return 'text-red-600 dark:text-red-400';
-    if (percentage >= 75) return 'text-yellow-600 dark:text-yellow-400';
-    return 'text-green-600 dark:text-green-400';
+    if (percentage >= 90) return "text-red-600";
+    if (percentage >= 70) return "text-orange-600";
+    if (percentage >= 50) return "text-yellow-600";
+    return "text-green-600";
   };
 
-  if (loading) {
-    return (
-      <DashboardLayout>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <Loader2 className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-500" />
-            <p className="text-gray-600">Loading usage data...</p>
-          </div>
-        </div>
-      </DashboardLayout>
-    );
-  }
+  const getProgressBarColor = (percentage: number) => {
+    if (percentage >= 90) return "bg-red-500";
+    if (percentage >= 70) return "bg-orange-500";
+    if (percentage >= 50) return "bg-yellow-500";
+    return "bg-green-500";
+  };
 
-  if (error || !usageData) {
+  const usageMetrics = [
+    {
+      id: "voice_minutes" as keyof UsageData,
+      icon: Clock,
+      title: "Voice Minutes",
+      color: "text-blue-600",
+      used: aggregatedUsage.voice_minutes,
+      limit: PLAN_LIMITS[currentPlan].voice_minutes,
+    },
+    {
+      id: "email_sends" as keyof UsageData,
+      icon: Mail,
+      title: "Email Sends",
+      color: "text-green-600",
+      used: aggregatedUsage.email_sends,
+      limit: PLAN_LIMITS[currentPlan].email_sends,
+    },
+    {
+      id: "rag_queries" as keyof UsageData,
+      icon: Search,
+      title: "RAG Queries",
+      color: "text-purple-600",
+      used: aggregatedUsage.rag_queries,
+      limit: PLAN_LIMITS[currentPlan].rag_queries,
+    },
+    {
+      id: "web_searches" as keyof UsageData,
+      icon: Globe,
+      title: "Web Searches",
+      color: "text-orange-600",
+      used: aggregatedUsage.web_searches,
+      limit: PLAN_LIMITS[currentPlan].web_searches,
+    },
+    {
+      id: "calendar_events" as keyof UsageData,
+      icon: Calendar,
+      title: "Calendar Events",
+      color: "text-red-600",
+      used: aggregatedUsage.calendar_events,
+      limit: PLAN_LIMITS[currentPlan].calendar_events,
+    },
+  ];
+
+  // Function to simulate adding usage (for demo purposes)
+  const addSampleUsage = async () => {
+    if (!user?.id) return;
+    
+    // Add a random usage event
+    const categories: Array<keyof UsageData> = ['voice_minutes', 'email_sends', 'rag_queries', 'web_searches', 'calendar_events'];
+    const randomCategory = categories[Math.floor(Math.random() * categories.length)];
+    const amount = Math.floor(Math.random() * 3) + 1;
+    
+    await usageTracker.recordUsage({
+      userId: user.id,
+      category: randomCategory,
+      amount,
+      metadata: {
+        agentName: 'Demo Agent',
+        type: 'manual_demo'
+      }
+    });
+
+    // Refresh the data
+    const usage = usageTracker.getUserUsage(user.id);
+    setAggregatedUsage({
+      voice_minutes: usage.voice_minutes || 0,
+      email_sends: usage.email_sends || 0,
+      rag_queries: usage.rag_queries || 0,
+      web_searches: usage.web_searches || 0,
+      calendar_events: usage.calendar_events || 0
+    });
+
+    const activities = usageTracker.getRecentActivity(user.id, 5);
+    const formattedActivities = activities.map(activity => ({
+      category: activity.category.replace('_', ' ').toUpperCase(),
+      amount: activity.amount,
+      unit: getUnitForCategory(activity.category),
+      occurredAt: activity.metadata?.timestamp || new Date().toISOString(),
+      metadata: activity.metadata
+    }));
+    setRecentActivities(formattedActivities);
+  };
+
+  if (!user) {
     return (
       <DashboardLayout>
-        <div className="text-center">
-          <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Failed to Load Usage Data</h1>
-          <p className="text-gray-600 mb-4">{error || 'No usage data available'}</p>
-          <Button onClick={() => window.location.reload()}>Retry</Button>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="text-center">
+            <p className="text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>
+              Loading usage data...
+            </p>
+          </div>
         </div>
       </DashboardLayout>
     );
@@ -125,235 +272,226 @@ export default function UsagePage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Usage & Billing</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Monitor your usage, costs, and active add-ons
-          </p>
+      <div className="max-w-7xl mx-auto p-6 space-y-6" style={{ fontFamily: 'Inter, sans-serif' }}>
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900" style={{ fontFamily: 'Inter, sans-serif' }}>
+              Usage & Analytics
+            </h1>
+            <p className="text-gray-600 mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+              Monitor your AI assistant usage and performance metrics
+            </p>
+          </div>
+          <div className="flex items-center space-x-3">
+            <Badge variant="outline" className="text-sm capitalize" style={{ fontFamily: 'Inter, sans-serif' }}>
+              {currentPlan === "free" ? "Free Plan" : currentPlan.replace("_", " ")} Plan
+            </Badge>
+            <Button variant="outline" size="sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+              Upgrade Plan
+            </Button>
+            <Button 
+              onClick={addSampleUsage}
+              variant="outline" 
+              size="sm" 
+              className="bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+              style={{ fontFamily: 'Inter, sans-serif' }}
+            >
+              Demo Usage
+            </Button>
+          </div>
         </div>
 
-        {/* Current Month Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Voice Calls</CardTitle>
-              <CardDescription>This month</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{usageData.currentMonth.calls.toLocaleString()}</div>
-              <Progress 
-                value={getUsagePercentage(usageData.currentMonth.calls, usageData.limits.calls)} 
-                className="mt-2"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                {usageData.currentMonth.calls.toLocaleString()} / {usageData.limits.calls.toLocaleString()}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Messages</CardTitle>
-              <CardDescription>This month</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{usageData.currentMonth.messages.toLocaleString()}</div>
-              <Progress 
-                value={getUsagePercentage(usageData.currentMonth.messages, usageData.limits.messages)} 
-                className="mt-2"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                {usageData.currentMonth.messages.toLocaleString()} / {usageData.limits.messages.toLocaleString()}
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">AI Minutes</CardTitle>
-              <CardDescription>This month</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{usageData.currentMonth.aiMinutes.toFixed(1)}</div>
-              <Progress 
-                value={getUsagePercentage(usageData.currentMonth.aiMinutes, usageData.limits.aiMinutes)} 
-                className="mt-2"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                {usageData.currentMonth.aiMinutes.toFixed(1)} / {usageData.limits.aiMinutes.toFixed(1)} hours
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Total Cost</CardTitle>
-              <CardDescription>This month</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">${usageData.currentMonth.cost.toFixed(2)}</div>
-              <Progress 
-                value={getUsagePercentage(usageData.currentMonth.cost, usageData.limits.cost)} 
-                className="mt-2"
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                ${usageData.currentMonth.cost.toFixed(2)} / ${usageData.limits.cost.toFixed(2)}
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Tabs defaultValue="overview" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="addons">Add-ons</TabsTrigger>
-            <TabsTrigger value="history">Usage History</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="overview" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Cost Breakdown */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Cost Breakdown</CardTitle>
-                  <CardDescription>Where your money goes this month</CardDescription>
+        {/* Usage Metrics Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          {usageMetrics.map((metric) => {
+            const percentage = getUsagePercentage(metric.used, metric.id);
+            const isUnlimited = metric.limit === -1;
+            
+            return (
+              <Card key={metric.id} className="relative">
+                <CardHeader className="pb-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-2">
+                      <metric.icon className={`w-5 h-5 ${metric.color}`} />
+                      <CardTitle className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        {metric.title}
+                      </CardTitle>
+                    </div>
+                  </div>
                 </CardHeader>
                 <CardContent>
-                  <div className="space-y-4">
-                    {costBreakdown.map((item, index) => (
-                      <div key={index} className="flex items-center justify-between">
-                        <div className="flex items-center space-x-2">
-                          <div className="w-3 h-3 rounded-full bg-blue-500"></div>
-                          <span className="text-sm font-medium">{item.category}</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-baseline">
+                      <span className="text-2xl font-bold" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        {isLoading ? "..." : metric.used.toLocaleString()}
+                      </span>
+                      <span className="text-sm text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        {isUnlimited ? "unlimited" : `of ${metric.limit.toLocaleString()}`}
+                      </span>
+                    </div>
+                    
+                    {!isUnlimited && !isLoading && (
+                      <>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className={`h-2 rounded-full transition-all duration-300 ${getProgressBarColor(percentage)}`}
+                            style={{ width: `${percentage}%` }}
+                          />
                         </div>
-                        <div className="text-right">
-                          <div className="font-semibold">${item.amount.toFixed(2)}</div>
-                          <div className="text-xs text-muted-foreground">{item.percentage}%</div>
+                        <div className={`text-xs font-medium ${getUsageColor(percentage)}`} style={{ fontFamily: 'Inter, sans-serif' }}>
+                          {percentage.toFixed(1)}% used
                         </div>
+                      </>
+                    )}
+                    
+                    {isUnlimited && (
+                      <div className="text-xs text-green-600 font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        ∞ Unlimited
                       </div>
-                    ))}
+                    )}
+                    
+                    {isLoading && (
+                      <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="h-2 bg-gray-300 rounded-full animate-pulse" />
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
+            );
+          })}
+        </div>
 
-              {/* Month-over-Month Comparison */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Month-over-Month</CardTitle>
-                  <CardDescription>Compare with last month</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Voice Calls</span>
-                      <div className="text-right">
-                        <div className="font-semibold">
-                          {usageData.currentMonth.calls > usageData.lastMonth.calls ? '+' : ''}
-                          {((usageData.currentMonth.calls - usageData.lastMonth.calls) / usageData.lastMonth.calls * 100).toFixed(1)}%
+        {/* Usage Summary and Recent Activity */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Monthly Usage Summary */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <TrendingUp className="w-5 h-5" />
+                <span>Monthly Summary</span>
+              </CardTitle>
+              <CardDescription style={{ fontFamily: 'Inter, sans-serif' }}>
+                Current month vs last month usage comparison
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {!isLoading ? (
+                  <>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="text-center p-3 bg-blue-50 rounded-lg">
+                        <div className="text-2xl font-bold text-blue-600" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          {monthlyData.currentMonth.calls}
                         </div>
-                        <div className="text-xs text-muted-foreground">
-                          {usageData.lastMonth.calls.toLocaleString()} → {usageData.currentMonth.calls.toLocaleString()}
+                        <div className="text-sm text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>Voice Minutes</div>
+                      </div>
+                      <div className="text-center p-3 bg-green-50 rounded-lg">
+                        <div className="text-2xl font-bold text-green-600" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          {monthlyData.currentMonth.messages}
                         </div>
+                        <div className="text-sm text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>Total Messages</div>
                       </div>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Messages</span>
-                      <div className="text-right">
-                        <div className="font-semibold">
-                          {usageData.currentMonth.messages > usageData.lastMonth.messages ? '+' : ''}
-                          {((usageData.currentMonth.messages - usageData.lastMonth.messages) / usageData.lastMonth.messages * 100).toFixed(1)}%
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {usageData.lastMonth.messages.toLocaleString()} → {usageData.currentMonth.messages.toLocaleString()}
-                        </div>
+                    
+                    <div className="text-center p-3 bg-gray-50 rounded-lg">
+                      <div className="text-xl font-bold text-gray-800" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        ${monthlyData.currentMonth.cost.toFixed(2)}
                       </div>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium">Cost</span>
-                      <div className="text-right">
-                        <div className="font-semibold">
-                          {usageData.currentMonth.cost > usageData.lastMonth.cost ? '+' : ''}
-                          {((usageData.currentMonth.cost - usageData.lastMonth.cost) / usageData.lastMonth.cost * 100).toFixed(1)}%
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          ${usageData.lastMonth.cost.toFixed(2)} → ${usageData.currentMonth.cost.toFixed(2)}
-                        </div>
+                      <div className="text-sm text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        Current month cost
                       </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-
-          <TabsContent value="addons" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Active Add-ons</CardTitle>
-                <CardDescription>Your current add-ons and their usage</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {activeAddons.map((addon, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{addon.name}</h3>
-                        <p className="text-sm text-muted-foreground">{addon.description}</p>
-                        <div className="flex items-center space-x-2 mt-2">
-                          <Badge variant={addon.status === 'active' ? 'default' : 'secondary'}>
-                            {addon.status}
-                          </Badge>
-                          <span className="text-sm text-muted-foreground">
-                            ${addon.cost.toFixed(2)}/month
+                      {monthlyData.lastMonth.cost > 0 && (
+                        <div className={`text-xs mt-1 flex items-center justify-center space-x-1 ${
+                          monthlyData.currentMonth.cost > monthlyData.lastMonth.cost 
+                            ? 'text-red-600' 
+                            : 'text-green-600'
+                        }`} style={{ fontFamily: 'Inter, sans-serif' }}>
+                          {monthlyData.currentMonth.cost > monthlyData.lastMonth.cost ? (
+                            <TrendingUp className="w-3 h-3" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3" />
+                          )}
+                          <span>
+                            {Math.abs(((monthlyData.currentMonth.cost - monthlyData.lastMonth.cost) / monthlyData.lastMonth.cost) * 100).toFixed(1)}% vs last month
                           </span>
                         </div>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold">{addon.usage}%</div>
-                        <Progress value={addon.usage} className="w-20 mt-2" />
-                      </div>
+                      )}
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+                      <div className="h-16 bg-gray-200 rounded-lg animate-pulse"></div>
+                    </div>
+                    <div className="h-20 bg-gray-200 rounded-lg animate-pulse"></div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
 
-          <TabsContent value="history" className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Usage History</CardTitle>
-                <CardDescription>Monthly usage trends</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {usageHistory.map((month, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <h3 className="font-semibold">{month.month}</h3>
-                        <div className="grid grid-cols-3 gap-4 mt-2 text-sm">
+          {/* Recent Activity */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2" style={{ fontFamily: 'Inter, sans-serif' }}>
+                <Activity className="w-5 h-5" />
+                <span>Recent Activity</span>
+              </CardTitle>
+              <CardDescription style={{ fontFamily: 'Inter, sans-serif' }}>
+                Latest usage events from your assistants
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {!isLoading ? (
+                  recentActivities.length > 0 ? (
+                    recentActivities.map((activity: Activity, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
                           <div>
-                            <span className="text-muted-foreground">Calls:</span>
-                            <span className="ml-2 font-medium">{month.calls.toLocaleString()}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Messages:</span>
-                            <span className="ml-2 font-medium">{month.messages.toLocaleString()}</span>
-                          </div>
-                          <div>
-                            <span className="text-muted-foreground">Cost:</span>
-                            <span className="ml-2 font-medium">${month.cost.toFixed(2)}</span>
+                            <div className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              {activity.category}
+                            </div>
+                            <div className="text-xs text-gray-500" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              {activity.metadata?.agentName || 'Unknown Agent'} • {new Date(activity.occurredAt).toLocaleDateString()} at{' '}
+                              {new Date(activity.occurredAt).toLocaleTimeString()}
+                            </div>
                           </div>
                         </div>
+                        <div className="text-sm font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                          {activity.amount} {activity.unit}
+                        </div>
                       </div>
+                    ))
+                  ) : (
+                    <div className="text-center py-4">
+                      <Activity className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <p className="text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>
+                        No recent activity. Your assistant interactions will appear here.
+                      </p>
+                      <button 
+                        onClick={addSampleUsage}
+                        className="mt-2 text-sm text-blue-600 hover:text-blue-700 font-medium"
+                        style={{ fontFamily: 'Inter, sans-serif' }}
+                      >
+                        Generate Sample Activity
+                      </button>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+                  )
+                ) : (
+                  <div className="space-y-3">
+                    {[1, 2, 3].map((i) => (
+                      <div key={i} className="h-12 bg-gray-200 rounded-lg animate-pulse"></div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     </DashboardLayout>
   );

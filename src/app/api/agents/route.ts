@@ -18,8 +18,8 @@ export async function GET(request: NextRequest) {
       );
     }
     
-    // Fetch agents from Convex using the list function
-    const agents = await convex.query(api.assistants.list, { userId });
+    // Fetch agents from Convex using the getByOwner function
+    const agents = await convex.query(api.assistants.getByOwner, { ownerId: userId });
     
     return NextResponse.json({
       success: true,
@@ -39,24 +39,42 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, type, description, customInstructions, userId } = body;
+    const { 
+      name, 
+      type, 
+      description, 
+      customInstructions, 
+      instructions,
+      capabilities, 
+      voiceEnabled, 
+      voicePipeline, 
+      wakeWord, 
+      userId 
+    } = body;
 
-    if (!name || !type || !description || !userId) {
+    if (!name || !userId) {
       return NextResponse.json(
-        { error: 'Missing required fields: name, type, description, userId' },
+        { error: 'Missing required fields: name, userId' },
         { status: 400 }
       );
     }
+
+    // Use instructions from onboarding or fallback to customInstructions
+    const finalInstructions = instructions || customInstructions || `You are ${name}, a helpful AI assistant.`;
 
     // Create agent using Convex create function
     const result = await convex.mutation(api.assistants.create, {
       userId,
       name,
-      type,
-      description,
-      customInstructions,
-      voiceEnabled: false, // Default to false
-      voiceConfig: null
+      type: type || 'assistant',
+      description: description || `${name} - Your personalized AI assistant`,
+      customInstructions: finalInstructions,
+      voiceEnabled: voiceEnabled || false,
+      voiceConfig: voiceEnabled ? {
+        pipeline: voicePipeline || 'lite',
+        wakeWord: wakeWord || 'Hey Assistant',
+        enabled: true
+      } : null
     });
 
     // Fetch the created agent to return complete data
@@ -71,6 +89,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       agent: createdAgent,
+      id: result.assistantId,
       message: 'Agent created successfully'
     });
 

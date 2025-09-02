@@ -36,35 +36,47 @@ export default function MinimalistAgentInterface({
   
   const {
     isConnected,
-    isRecording,
+    isListening: isVoiceListening,
     connect,
     disconnect,
-    startRecording,
-    stopRecording,
+    startListening,
+    stopListening,
     sendMessage: sendVoiceMessage
-  } = useEnhancedVoice({
-    provider: voiceProvider as "openai" | "elevenlabs",
-    voice: selectedVoice,
-    wakeWords,
-    onTranscript: (text) => {
-      if (text.trim()) {
-        handleSendMessage(text);
-      }
-    },
-    onResponse: (response) => {
-      setConversation(prev => [...prev, {
-        id: Date.now().toString(),
-        type: 'assistant',
-        content: response,
-        timestamp: new Date()
-      }]);
-    }
-  });
+  } = useEnhancedVoice();
 
   useEffect(() => {
-    connect();
-    return () => disconnect();
-  }, [connect, disconnect]);
+    const initializeVoice = async () => {
+      try {
+        await connect({
+          agentName,
+          wakeWords,
+          provider: voiceProvider as 'elevenlabs' | 'google' | 'playht' | 'openai',
+          voice: selectedVoice,
+          instructions: `You are ${agentName}, a ${agentType.toLowerCase()} assistant.`,
+          temperature: 0.7,
+          enableTools: true
+        });
+      } catch (error) {
+        console.error('Failed to initialize voice:', error);
+      }
+    };
+
+    initializeVoice();
+
+    return () => {
+      disconnect();
+    };
+  }, [agentName, agentType, voiceProvider, selectedVoice, wakeWords, connect, disconnect]);
+
+  const toggleListening = () => {
+    if (isVoiceListening || isListening) {
+      stopListening();
+      setIsListening(false);
+    } else {
+      startListening();
+      setIsListening(true);
+    }
+  };
 
   const handleSendMessage = (text: string) => {
     if (!text.trim()) return;
@@ -90,12 +102,13 @@ export default function MinimalistAgentInterface({
   };
 
   const handleVoiceToggle = () => {
-    if (isRecording) {
-      stopRecording();
+    if (isVoiceListening || isListening) {
+      stopListening();
+      setIsListening(false);
     } else {
-      startRecording();
+      startListening();
+      setIsListening(true);
     }
-    setIsListening(!isListening);
   };
 
   const handleFileUpload = (files: FileList | null) => {

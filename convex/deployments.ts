@@ -2,6 +2,39 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
+// Get deployments by user
+export const getByUser = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("deployments")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+  }
+});
+
+// Update deployment status
+export const updateStatus = mutation({
+  args: {
+    deploymentId: v.id("deployments"),
+    status: v.union(v.literal("active"), v.literal("paused"), v.literal("stopped"))
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.patch(args.deploymentId, {
+      status: args.status,
+      updatedAt: new Date().toISOString()
+    });
+  }
+});
+
+// Delete deployment
+export const deleteDeployment = mutation({
+  args: { deploymentId: v.id("deployments") },
+  handler: async (ctx, args) => {
+    return await ctx.db.delete(args.deploymentId);
+  }
+});
+
 // Create a new deployment
 export const create = mutation({
   args: {
@@ -63,22 +96,6 @@ export const get = query({
   args: { deploymentId: v.id("deployments") },
   handler: async (ctx, args) => {
     return await ctx.db.get(args.deploymentId);
-  },
-});
-
-// Update deployment status
-export const updateStatus = mutation({
-  args: {
-    deploymentId: v.id("deployments"),
-    status: v.union(v.literal("active"), v.literal("paused"), v.literal("stopped")),
-  },
-  handler: async (ctx, args) => {
-    await ctx.db.patch(args.deploymentId, {
-      status: args.status,
-      updatedAt: new Date().toISOString(),
-    });
-
-    return { success: true };
   },
 });
 

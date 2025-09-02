@@ -1,7 +1,7 @@
 {
-  "name": "FamilyAI - Your Family's Personal Assistant",
-  "short_name": "FamilyAI",
-  "description": "Create your own AI assistant in minutes. Handle emails, manage calendars, track family schedules, and get instant answers to everyday questions.",
+  "name": "Smarticus - Your Personal AI Assistant",
+  "short_name": "Smarticus",
+  "description": "Create your own AI assistant in minutes. Handle emails, manage calendars, track schedules, and get instant answers to everyday questions.",
   "start_url": "/dashboard",
   "display": "standalone",
   "background_color": "#0a0a0a",
@@ -13,21 +13,15 @@
   "categories": ["productivity", "family", "utilities", "ai", "assistant"],
   "icons": [
     {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
+      "src": "/smarticus-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "maskable any"
     },
     {
-      "src": "/icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable any"
-    },
-    {
-      "src": "/icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
+      "src": "/smarticus-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "monochrome"
     }
   ],
@@ -37,28 +31,28 @@
       "short_name": "Dashboard",
       "description": "Access your AI assistant dashboard",
       "url": "/dashboard",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/smarticus-logo.svg", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
       "name": "Agent Designer",
       "short_name": "Designer",
       "description": "Create and customize AI assistants",
       "url": "/dashboard/agent-designer",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/smarticus-logo.svg", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
       "name": "Documents",
       "short_name": "Docs",
       "description": "Manage documents and knowledge base",
       "url": "/dashboard/documents",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/smarticus-logo.svg", "sizes": "any", "type": "image/svg+xml" }]
     },
     {
       "name": "Voice Test",
       "short_name": "Voice",
       "description": "Test voice interactions",
       "url": "/dashboard/agent-designer?tab=voice",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "icons": [{ "src": "/smarticus-logo.svg", "sizes": "any", "type": "image/svg+xml" }]
     }
   ],
   "screenshots": [
@@ -67,14 +61,14 @@
       "sizes": "1280x720",
       "type": "image/png",
       "form_factor": "wide",
-      "label": "FamilyAI Dashboard - AI assistant interface with real-time processing"
+      "label": "Smarticus Dashboard - AI assistant interface with real-time processing"
     },
     {
       "src": "/screenshot-narrow.png",
       "sizes": "750x1334",
       "type": "image/png",
       "form_factor": "narrow",
-      "label": "FamilyAI Mobile - Touch-optimized AI controls and document management"
+      "label": "Smarticus Mobile - Touch-optimized AI controls and document management"
     }
   ],
   "features": [
@@ -94,7 +88,7 @@
   },
   "protocol_handlers": [
     {
-      "protocol": "web+familyai",
+      "protocol": "web+smarticus",
       "url": "/a/%s"
     }
   ],

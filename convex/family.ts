@@ -3,6 +3,33 @@ import { mutation, query } from "./_generated/server";
 import { Id } from "./_generated/dataModel";
 
 // Family member management for Family Assistant
+export const addMember = mutation({
+  args: {
+    userId: v.string(),
+    name: v.string(),
+    role: v.union(v.literal("child"), v.literal("spouse"), v.literal("parent"), v.literal("other")),
+    contactRef: v.optional(v.string()),
+    calendarRefs: v.array(v.string()),
+    color: v.optional(v.string()),
+    metadata: v.optional(v.any())
+  },
+  handler: async (ctx, args) => {
+    const now = new Date().toISOString();
+    
+    return await ctx.db.insert("familyMembers", {
+      userId: args.userId,
+      name: args.name,
+      role: args.role,
+      contactRef: args.contactRef,
+      calendarRefs: args.calendarRefs,
+      color: args.color,
+      metadata: args.metadata,
+      createdAt: now,
+      updatedAt: now
+    });
+  }
+});
+
 export const createFamilyMember = mutation({
   args: {
     userId: v.string(),

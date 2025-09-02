@@ -1,8 +1,15 @@
 import { ConvexReactClient } from "convex/react";
+import { ConvexHttpClient } from "convex/browser";
 
-export const convex = new ConvexReactClient(
+// Client for React components (client-side)
+export const convexReactClient = new ConvexReactClient(
   process.env.NEXT_PUBLIC_CONVEX_URL!
 );
 
-// Export the client for use in components
-export default convex;
+// Client for server-side API routes
+export const convex = new ConvexHttpClient(
+  process.env.NEXT_PUBLIC_CONVEX_URL!
+);
+
+// Export the React client as default for backward compatibility
+export default convexReactClient;

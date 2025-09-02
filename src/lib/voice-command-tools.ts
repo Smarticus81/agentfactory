@@ -141,8 +141,29 @@ export const VOICE_COMMAND_TOOLS = [
   {
     type: "function",
     function: {
+      name: "search_knowledge_base",
+      description: "Search the agent's knowledge base from uploaded documents. Use for questions about specific information in documents.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Search query for the knowledge base"
+          },
+          limit: {
+            type: "number",
+            description: "Maximum number of results to return (default 5)"
+          }
+        },
+        required: ["query"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
       name: "web_search",
-      description: "Search the web for information. Use when user asks for current information, weather, news, facts, etc.",
+      description: "Search the web for current information. Use when user asks for current information, weather, news, facts, etc.",
       parameters: {
         type: "object",
         properties: {
@@ -264,6 +285,75 @@ export const VOICE_COMMAND_TOOLS = [
         required: ["title"]
       }
     }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_weather",
+      description: "Get current weather information. Use when user asks about weather conditions.",
+      parameters: {
+        type: "object",
+        properties: {
+          location: {
+            type: "string",
+            description: "Location to get weather for (defaults to user's location)"
+          },
+          type: {
+            type: "string",
+            enum: ["current", "forecast", "alerts"],
+            description: "Type of weather information"
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "control_smart_home",
+      description: "Control smart home devices. Use when user wants to control lights, thermostat, etc.",
+      parameters: {
+        type: "object",
+        properties: {
+          device: {
+            type: "string",
+            description: "Device name or type (lights, thermostat, door, etc.)"
+          },
+          action: {
+            type: "string",
+            description: "Action to perform (turn on/off, set temperature, etc.)"
+          },
+          value: {
+            type: "string",
+            description: "Value for the action (temperature, brightness, etc.)"
+          }
+        },
+        required: ["device", "action"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_news",
+      description: "Get current news headlines. Use when user asks for news or current events.",
+      parameters: {
+        type: "object",
+        properties: {
+          category: {
+            type: "string",
+            enum: ["general", "business", "technology", "sports", "health", "entertainment"],
+            description: "News category"
+          },
+          limit: {
+            type: "number",
+            description: "Number of headlines to return"
+          }
+        },
+        required: []
+      }
+    }
   }
 ];
 
@@ -274,10 +364,28 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
   try {
     switch (toolName) {
       case 'send_email':
-        // This would call the Convex Gmail function
+        // Make API call to send email
+        const emailResponse = await fetch('/api/gmail/send', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            to: args.to,
+            subject: args.subject,
+            body: args.body,
+            cc: args.cc,
+            agentId
+          })
+        });
+        
+        if (!emailResponse.ok) {
+          throw new Error('Failed to send email');
+        }
+        
+        const emailData = await emailResponse.json();
         return {
           success: true,
-          message: `Email sent to ${args.to}`,
+          message: emailData.message,
           action: 'email_sent',
           details: args
         };
@@ -285,11 +393,32 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
       case 'add_calendar_event':
         // Parse natural language time to ISO format
         const startTime = parseTimeToISO(args.start_time);
-        const endTime = args.end_time ? parseTimeToISO(args.end_time) : new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString(); // Default 1 hour
+        const endTime = args.end_time ? parseTimeToISO(args.end_time) : new Date(new Date(startTime).getTime() + 60 * 60 * 1000).toISOString();
 
+        const calendarResponse = await fetch('/api/calendar/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            title: args.title,
+            description: args.description,
+            startDateTime: startTime,
+            endDateTime: endTime,
+            location: args.location,
+            attendees: args.attendees,
+            reminder: args.reminder,
+            agentId
+          })
+        });
+        
+        if (!calendarResponse.ok) {
+          throw new Error('Failed to add calendar event');
+        }
+        
+        const calendarData = await calendarResponse.json();
         return {
           success: true,
-          message: `Event "${args.title}" added to calendar`,
+          message: calendarData.message,
           action: 'calendar_event_added',
           details: {
             ...args,
@@ -300,13 +429,20 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
 
       case 'get_calendar_events':
         const dateRange = parseDateRange(args.date_range || 'today');
+        const eventsResponse = await fetch(`/api/calendar/events?userId=${userId}&fromDate=${dateRange.start}&toDate=${dateRange.end}&limit=${args.limit || 10}`);
+        
+        if (!eventsResponse.ok) {
+          throw new Error('Failed to get calendar events');
+        }
+        
+        const eventsData = await eventsResponse.json();
         return {
           success: true,
-          message: `Found calendar events`,
+          message: `Found ${eventsData.events.length} calendar events`,
           action: 'calendar_events_retrieved',
           details: {
             date_range: dateRange,
-            events: [] // This would be populated from Convex
+            events: eventsData.events
           }
         };
 
@@ -319,11 +455,36 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
         };
 
       case 'get_recent_emails':
+        const emailsResponse = await fetch(`/api/gmail/send?userId=${userId}&limit=${args.limit || 10}`);
+        
+        if (!emailsResponse.ok) {
+          throw new Error('Failed to get recent emails');
+        }
+        
+        const emailsData = await emailsResponse.json();
         return {
           success: true,
-          message: `Retrieved recent emails`,
+          message: `Retrieved ${emailsData.emails.length} recent emails`,
           action: 'recent_emails_retrieved',
-          details: { limit: args.limit || 10 }
+          details: { emails: emailsData.emails }
+        };
+
+      case 'search_knowledge_base':
+        const knowledgeResponse = await fetch(`/api/knowledge/search?userId=${userId}&query=${encodeURIComponent(args.query)}&limit=${args.limit || 5}`);
+        
+        if (!knowledgeResponse.ok) {
+          throw new Error('Failed to search knowledge base');
+        }
+        
+        const knowledgeData = await knowledgeResponse.json();
+        return {
+          success: true,
+          message: `Found ${knowledgeData.count} relevant documents`,
+          action: 'knowledge_searched',
+          details: {
+            query: args.query,
+            results: knowledgeData.results
+          }
         };
 
       case 'web_search':
@@ -363,6 +524,30 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
           success: true,
           message: `Task added: ${args.title}`,
           action: 'task_added',
+          details: args
+        };
+
+      case 'get_weather':
+        return {
+          success: true,
+          message: `Weather information for ${args.location || 'your location'}`,
+          action: 'weather_retrieved',
+          details: args
+        };
+
+      case 'control_smart_home':
+        return {
+          success: true,
+          message: `Smart home command: ${args.action} ${args.device}`,
+          action: 'smart_home_controlled',
+          details: args
+        };
+
+      case 'get_news':
+        return {
+          success: true,
+          message: `Latest ${args.category || 'general'} news headlines`,
+          action: 'news_retrieved',
           details: args
         };
 

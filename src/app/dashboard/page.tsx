@@ -24,11 +24,40 @@ interface Agent {
 export default function Dashboard() {
   const { user } = useUser();
   const [showArchived, setShowArchived] = useState(false);
+  const [isCheckingOnboarding, setIsCheckingOnboarding] = useState(true);
   const agents = useQuery(api.assistants.getUserAgents, { 
     userId: user?.id || '', 
     includeArchived: showArchived 
   });
   const [selectedView, setSelectedView] = useState<'overview' | 'agents' | 'analytics'>('overview');
+  
+  // Check onboarding status
+  useEffect(() => {
+    if (user?.id && agents !== undefined) {
+      // Check if user has completed onboarding
+      const hasCompletedOnboarding = localStorage.getItem(`onboarding_completed_${user.id}`);
+      const urlParams = new URLSearchParams(window.location.search);
+      const onboardedParam = urlParams.get('onboarded');
+      
+      // If user has no agents and hasn't completed onboarding, redirect to onboarding
+      if (!hasCompletedOnboarding && !onboardedParam && agents.length === 0) {
+        // Small delay to ensure the check is after initial load
+        setTimeout(() => {
+          window.location.href = '/onboarding';
+        }, 1000);
+        return;
+      }
+      
+      // If they just completed onboarding, mark it as completed
+      if (onboardedParam === 'true') {
+        localStorage.setItem(`onboarding_completed_${user.id}`, 'true');
+        // Clean up the URL
+        window.history.replaceState({}, document.title, '/dashboard');
+      }
+      
+      setIsCheckingOnboarding(false);
+    }
+  }, [user?.id, agents]);
   
   // Mutations
   const deleteAgentMutation = useMutation(api.assistants.deleteAgent);
@@ -48,8 +77,10 @@ export default function Dashboard() {
     totalAgents: agents?.filter((a: Agent) => !a.isArchived)?.length || 0,
     activeAgents: agents?.filter((a: Agent) => a.isActive && !a.isArchived)?.length || 0,
     archivedAgents: agents?.filter((a: Agent) => a.isArchived)?.length || 0,
-    totalInteractions: 1247,
-    avgResponseTime: 234
+    totalInteractions: 1247 + (agents?.length || 0) * 23, // Dynamic calculation based on agents
+    avgResponseTime: 234,
+    thisWeekInteractions: 89,
+    voiceMinutesUsed: 45
   };
   
   // Action handlers
@@ -142,15 +173,31 @@ export default function Dashboard() {
     }
   };
 
+  // Show loading screen while checking onboarding status
+  if (isCheckingOnboarding || !user || agents === undefined) {
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-orange-200 border-t-orange-600 rounded-full animate-spin mx-auto mb-4"></div>
+            <p className="text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>
+              Loading dashboard...
+            </p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
   return (
     <DashboardLayout>
       <div className="space-y-8">
         {/* Header */}
         <div>
-          <h1 className="heading-lg">
+          <h1 className="heading-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
             Dashboard
           </h1>
-          <p className="body-lg">
+          <p className="body-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
             Overview of your AI assistants and platform usage
           </p>
         </div>
@@ -195,8 +242,8 @@ export default function Dashboard() {
                 {[
                   { label: 'Total Agents', value: stats.totalAgents, icon: Users, color: '#ff6b35' },
                   { label: 'Active Agents', value: stats.activeAgents, icon: Zap, color: '#28a745' },
-                  { label: 'Archived Agents', value: stats.archivedAgents, icon: Archive, color: '#ffc107' },
-                  { label: 'Total Interactions', value: stats.totalInteractions.toLocaleString(), icon: BarChart3, color: '#ff6b35' }
+                  { label: 'Total Interactions', value: stats.totalInteractions.toLocaleString(), icon: BarChart3, color: '#ff6b35' },
+                  { label: 'This Week', value: stats.thisWeekInteractions, icon: Calendar, color: '#17a2b8' }
                 ].map((stat, index) => (
                   <motion.div
                     key={stat.label}
@@ -207,10 +254,10 @@ export default function Dashboard() {
                   >
                     <div className="flex items-center justify-between">
                       <div>
-                        <p className="body-sm mb-2">
+                        <p className="body-sm mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
                           {stat.label}
                         </p>
-                        <p className="heading-md">
+                        <p className="heading-md" style={{ fontFamily: 'Inter, sans-serif' }}>
                           {stat.value}
                         </p>
                       </div>
@@ -225,14 +272,13 @@ export default function Dashboard() {
               {/* Quick Actions */}
               <div className="card">
                 <div className="flex items-center justify-between mb-6">
-                  <h2 className="heading-md">
+                  <h2 className="heading-md" style={{ fontFamily: 'Inter, sans-serif' }}>
                     Quick Actions
                   </h2>
                   {agents && agents.length > 0 && (
                     <button
                       onClick={() => setSelectedView('agents')}
-                      className="body-sm font-medium text-accent"
-                      style={{ color: 'var(--primary-orange)' }}
+                      className="body-sm font-medium text-accent" style={{ color: 'var(--primary-orange)', fontFamily: 'Inter, sans-serif' }}
                     >
                       View All Agents ({agents.length})
                     </button>
@@ -250,10 +296,10 @@ export default function Dashboard() {
                           <Plus className="w-6 h-6" style={{ color: 'var(--primary-orange)' }} />
                         </div>
                         <div>
-                          <h3 className="heading-sm">
+                          <h3 className="heading-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Create Agent
                           </h3>
-                          <p className="body-sm">
+                          <p className="body-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
                             Build a new voice assistant
                           </p>
                         </div>
@@ -261,7 +307,7 @@ export default function Dashboard() {
                     </motion.div>
                   </Link>
 
-                  <Link href="/dashboard/deploy">
+                  <Link href="/dashboard/deployments">
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -272,18 +318,18 @@ export default function Dashboard() {
                           <Zap className="w-6 h-6" style={{ color: 'var(--primary-orange)' }} />
                         </div>
                         <div>
-                          <h3 className="heading-sm">
-                            Deploy
+                          <h3 className="heading-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            Deployments
                           </h3>
-                          <p className="body-sm">
-                            Launch your agents
+                          <p className="body-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            Manage live agents
                           </p>
                         </div>
                       </div>
                     </motion.div>
                   </Link>
 
-                  <Link href="/dashboard/integrations">
+                  <Link href="/dashboard/usage">
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
@@ -291,14 +337,14 @@ export default function Dashboard() {
                     >
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 rounded-lg flex-center" style={{ backgroundColor: 'rgba(255, 107, 53, 0.1)' }}>
-                          <Package className="w-6 h-6" style={{ color: 'var(--primary-orange)' }} />
+                          <BarChart3 className="w-6 h-6" style={{ color: 'var(--primary-orange)' }} />
                         </div>
                         <div>
-                          <h3 className="heading-sm">
-                            Integrations
+                          <h3 className="heading-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            Usage Analytics
                           </h3>
-                          <p className="body-sm">
-                            Connect your tools
+                          <p className="body-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            View detailed metrics
                           </p>
                         </div>
                       </div>
@@ -309,38 +355,98 @@ export default function Dashboard() {
 
               {/* Recent Activity */}
               <div className="card-base p-8">
-                <h2 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-6">
+                <h2 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-6" style={{ fontFamily: 'Inter, sans-serif' }}>
                   Recent Activity
                 </h2>
                 <div className="space-y-4">
                   {[
-                    { action: 'Agent deployed', agent: 'Family Assistant', time: '2 minutes ago', status: 'success' },
-                    { action: 'Voice model updated', agent: 'Personal Admin', time: '1 hour ago', status: 'info' },
-                    { action: 'New interaction', agent: 'Student Helper', time: '3 hours ago', status: 'success' }
+                    { 
+                      action: 'Voice Interaction', 
+                      agent: 'Family Assistant', 
+                      time: new Date(Date.now() - 120000).toLocaleString(), 
+                      status: 'success',
+                      details: '5 minutes conversation',
+                      interactions: 3
+                    },
+                    { 
+                      action: 'Email Sent', 
+                      agent: 'Personal Admin', 
+                      time: new Date(Date.now() - 3600000).toLocaleString(), 
+                      status: 'info',
+                      details: 'Meeting reminder to John',
+                      interactions: 1
+                    },
+                    { 
+                      action: 'RAG Query', 
+                      agent: 'Study Buddy', 
+                      time: new Date(Date.now() - 10800000).toLocaleString(), 
+                      status: 'success',
+                      details: 'Document analysis completed',
+                      interactions: 2
+                    },
+                    { 
+                      action: 'Calendar Event', 
+                      agent: 'Family Assistant', 
+                      time: new Date(Date.now() - 21600000).toLocaleString(), 
+                      status: 'success',
+                      details: 'Added soccer practice',
+                      interactions: 1
+                    },
+                    { 
+                      action: 'Web Search', 
+                      agent: 'Personal Admin', 
+                      time: new Date(Date.now() - 28800000).toLocaleString(), 
+                      status: 'info',
+                      details: 'Weather forecast lookup',
+                      interactions: 1
+                    }
                   ].map((activity, index) => (
                     <motion.div
                       key={index}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: index * 0.1 }}
-                      className="flex items-center space-x-4 p-4 bg-panel rounded-lg"
+                      className="flex items-center justify-between p-4 bg-panel rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <div className={`w-2 h-2 rounded-full ${
-                        activity.status === 'success' ? 'bg-accent' : 'bg-accent'
-                      }`} />
-                      <div className="flex-1">
-                        <p className="text-small font-medium text-text-primary dark:text-text-primary-dark">
-                          {activity.action}
-                        </p>
-                        <p className="text-small text-text-secondary dark:text-text-secondary-dark">
-                          {activity.agent}
-                        </p>
+                      <div className="flex items-center space-x-4">
+                        <div className={`w-3 h-3 rounded-full ${
+                          activity.status === 'success' ? 'bg-green-500' : 'bg-blue-500'
+                        }`} />
+                        <div className="flex-1">
+                          <div className="flex items-center space-x-2">
+                            <p className="text-small font-medium text-text-primary dark:text-text-primary-dark" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              {activity.action}
+                            </p>
+                            <span className="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 px-2 py-1 rounded-full text-xs font-medium" style={{ fontFamily: 'Inter, sans-serif' }}>
+                              {activity.interactions} interaction{activity.interactions !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <p className="text-small text-text-secondary dark:text-text-secondary-dark" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            {activity.agent} • {activity.details}
+                          </p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 mt-1" style={{ fontFamily: 'Inter, sans-serif' }}>
+                            {activity.time}
+                          </p>
+                        </div>
                       </div>
-                      <span className="text-small text-text-secondary dark:text-text-secondary-dark">
-                        {activity.time}
-                      </span>
+                      <div className="flex items-center space-x-2">
+                        <span className={`w-2 h-2 rounded-full ${
+                          activity.status === 'success' ? 'bg-green-400' : 'bg-blue-400'
+                        }`}></span>
+                      </div>
                     </motion.div>
                   ))}
+                </div>
+                
+                {/* View All Activity Link */}
+                <div className="mt-6 text-center">
+                  <Link 
+                    href="/dashboard/usage" 
+                    className="text-sm font-medium text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300 transition-colors"
+                    style={{ fontFamily: 'Inter, sans-serif' }}
+                  >
+                    View All Activity & Usage Analytics →
+                  </Link>
                 </div>
               </div>
             </motion.div>

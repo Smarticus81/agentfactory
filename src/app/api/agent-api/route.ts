@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { convex } from '@/lib/convex';
+import { convexServer } from '@/lib/convex-server';
 import { api } from '../../../../convex/_generated/api';
 
 export const runtime = "edge";
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
 
       // Query knowledge base for relevant information
       try {
-        knowledgeResults = await convex.query(api.knowledge.queryKnowledge, {
+        knowledgeResults = await convexServer.query(api.knowledge.queryKnowledge, {
           userId: (agentConfig as any)?.ownerId || 'unknown',
           query: message,
           sourceTypes: ['document'],

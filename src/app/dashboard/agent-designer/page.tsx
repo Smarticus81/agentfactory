@@ -86,10 +86,10 @@ export default function AssistantDesigner() {
             Back to Dashboard
           </Link>
           
-          <h1 className="text-h1 font-bold text-text-primary dark:text-text-primary-dark mb-2">
+          <h1 className="text-h1 font-bold text-text-primary dark:text-text-primary-dark mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
             Create New Assistant
           </h1>
-          <p className="text-body text-text-secondary dark:text-text-secondary-dark">
+          <p className="text-body text-text-secondary dark:text-text-secondary-dark" style={{ fontFamily: 'Inter, sans-serif' }}>
             Design your personal AI helper with minimalist interface
           </p>
         </div>

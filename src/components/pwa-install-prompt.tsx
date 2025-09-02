@@ -83,7 +83,7 @@ export function PWAInstallPrompt() {
           
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-              Install FamilyAI
+              Install Smarticus
             </h3>
             <p className="text-xs text-slate-600 dark:text-slate-400 mt-1">
               Add to your home screen for the best experience

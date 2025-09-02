@@ -24,7 +24,7 @@ export default function SignInPage() {
             Welcome back
           </h1>
           <p className="text-body text-text-secondary dark:text-text-secondary-dark">
-            Sign in to your FamilyAI account
+            Sign in to your Smarticus account
           </p>
         </div>
         

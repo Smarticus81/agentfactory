@@ -11,6 +11,17 @@ const DEFAULT_VOICE_PIPELINE_CONFIG = {
   maxTokens: 1000,
 };
 
+// Get assistants by owner
+export const getByOwner = query({
+  args: { ownerId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("assistants")
+      .withIndex("by_owner", (q) => q.eq("ownerId", args.ownerId))
+      .collect();
+  }
+});
+
 // Create a new assistant
 export const create = mutation({
   args: {
@@ -95,21 +106,9 @@ export const get = query({
 
 // Get all assistants for a user
 export const list = query({
-  args: { userId: v.string() },
-  handler: async (ctx, args) => {
-    const assistants = await ctx.db
-      .query("assistants")
-      .withIndex("by_owner", (q) => q.eq("ownerId", args.userId))
-      .collect();
-
-    return assistants.map(assistant => ({
-      ...assistant,
-      voicePipeline: assistant.voiceConfig || DEFAULT_VOICE_PIPELINE_CONFIG,
-      isActive: assistant.isActive !== undefined ? assistant.isActive : true,
-      isArchived: assistant.isArchived || false,
-      createdAt: assistant.createdAt || new Date().toISOString(),
-      updatedAt: assistant.updatedAt || new Date().toISOString(),
-    }));
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db.query("assistants").collect();
   },
 });
 
@@ -146,20 +145,6 @@ export const getUserAgents = query({
 });
 
 // Delete an assistant
-export const remove = mutation({
-  args: { assistantId: v.id("assistants") },
-  handler: async (ctx, args) => {
-    const assistant = await ctx.db.get(args.assistantId);
-    if (!assistant) {
-      throw new Error("Assistant not found");
-    }
-
-    await ctx.db.delete(args.assistantId);
-    return { success: true };
-  },
-});
-
-// Delete an assistant (alias for remove function)
 export const deleteAgent = mutation({
   args: { 
     agentId: v.id("assistants"),

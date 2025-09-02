@@ -335,10 +335,12 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
           // Fallback to standard chat API for other providers
           if (!responseText) {
             console.log('Using standard chat API');
+            const openaiApiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
             const response = await fetch('/api/chat', {
               method: 'POST',
               headers: {
-                'Content-Type': 'application/json'
+                'Content-Type': 'application/json',
+                'x-openai-key': openaiApiKey
               },
               body: JSON.stringify({
                 message: command,
@@ -346,7 +348,9 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
                 agentName: configRef.current?.agentName,
                 agentId: configRef.current?.agentId,
                 userId: configRef.current?.userId,
-                enableTools: configRef.current?.provider === 'elevenlabs' // Enable tools for ElevenLabs
+                enableTools: configRef.current?.provider === 'elevenlabs', // Enable tools for ElevenLabs
+                // Provide API key fallback in dev when server env may be unset
+                openaiApiKey: openaiApiKey
               })
             });
             
