@@ -4,7 +4,7 @@ import { convex } from '@/lib/convex';
 import { api } from '../../../../convex/_generated/api';
 
 const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY,
+  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
 });
 
 // Define available tools for agents
@@ -41,6 +41,15 @@ const availableTools = [
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if OpenAI API key is available
+    if (!process.env.NEXT_PUBLIC_OPENAI_API_KEY && !process.env.OPENAI_API_KEY) {
+      console.error('Chat API - No OpenAI API key found');
+      return NextResponse.json({ 
+        error: 'OpenAI API key not configured',
+        details: 'Please set NEXT_PUBLIC_OPENAI_API_KEY or OPENAI_API_KEY environment variable'
+      }, { status: 500 });
+    }
+
     const { message, instructions, agentName, agentId, userId, enableTools = true } = await request.json();
 
     if (!message) {
@@ -69,6 +78,8 @@ export async function POST(request: NextRequest) {
         }
       } catch (error) {
         console.error('Chat API - Knowledge query error:', error);
+        // Continue without knowledge context if query fails
+        console.log('Chat API - Continuing without knowledge context');
       }
     }
 

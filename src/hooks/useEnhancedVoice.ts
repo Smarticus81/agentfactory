@@ -131,6 +131,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
       }
 
       if (providerConfig) {
+        console.log(`Initializing voice pipeline with ${config.provider} provider...`);
         voicePipelineRef.current = new VoicePipelineManager();
         await voicePipelineRef.current.initialize({
           providers: [providerConfig],
@@ -160,6 +161,17 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
           console.log(`Voice provider switched to: ${newProvider}`);
           setCurrentProvider(newProvider);
         });
+
+        console.log(`Voice pipeline successfully initialized with ${config.provider} provider`);
+      } else {
+        const missingKeys = [];
+        if (config.provider === 'elevenlabs' && !config.elevenLabsApiKey) missingKeys.push('ElevenLabs API key');
+        if (config.provider === 'google' && !config.googleApiKey) missingKeys.push('Google API key');
+        if (config.provider === 'playht' && (!config.playhtApiKey || !config.playhtUserId)) missingKeys.push('PlayHT API key/User ID');
+        
+        const errorMessage = `${config.provider} voice provider is not properly configured. Missing: ${missingKeys.join(', ')}`;
+        console.error(errorMessage);
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('Failed to initialize voice pipeline:', error);
@@ -290,8 +302,8 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
       }
       
       // Use appropriate provider for command processing
-      if (configRef.current?.provider === 'openai' || configRef.current?.enableTools) {
-        // Use OpenAI Realtime for OpenAI provider or when tools are enabled
+      if (configRef.current?.provider === 'openai') {
+        // Use OpenAI Realtime for OpenAI provider
         if (openAIClientRef.current?.isConnected) {
           // OpenAI Realtime handles audio automatically - no additional TTS needed
           await openAIClientRef.current.sendMessage(command);
@@ -300,7 +312,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
           setError('Voice assistant not ready. Please try again.');
         }
       } else {
-        // Use voice pipeline with text completion for other providers
+        // Use voice pipeline with text completion for other providers (ElevenLabs, Google, PlayHT, etc.)
         console.log(`Processing command with ${configRef.current?.provider} provider: "${command}"`);
         
         try {
@@ -422,7 +434,10 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
         // For streaming providers like ElevenLabs, audio is handled via events
         
       } else {
-        throw new Error('Voice pipeline not available');
+        const errorMessage = `Voice synthesis not available. ${configRef.current?.provider} provider is not properly initialized.`;
+        console.error(errorMessage);
+        setError(errorMessage);
+        throw new Error(errorMessage);
       }
     } catch (err) {
       console.error('Error speaking response:', err);
@@ -442,8 +457,8 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
         await initializeVoicePipeline(config);
       }
 
-      // Initialize OpenAI client if needed (but don't connect yet)
-      if (config.provider === 'openai' || config.enableTools) {
+      // Initialize OpenAI client only if using OpenAI provider
+      if (config.provider === 'openai') {
         // Use global singleton to prevent multiple instances
         if (!globalOpenAIClient) {
           console.log('Creating new OpenAI Realtime client instance (not connecting yet)');

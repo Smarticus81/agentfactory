@@ -303,6 +303,13 @@ export default function MinimalistAgentInterface({
         instructions: `You are ${agentName}, a professional ${agentType} assistant. Be helpful, concise, and friendly.`,
         temperature: 0.7,
         enableTools: true,
+        // Add API keys from environment variables
+        elevenLabsApiKey: process.env.NEXT_PUBLIC_ELEVENLABS_API_KEY,
+        googleApiKey: process.env.NEXT_PUBLIC_GOOGLE_API_KEY,
+        playhtApiKey: process.env.NEXT_PUBLIC_PLAYHT_API_KEY,
+        playhtUserId: process.env.NEXT_PUBLIC_PLAYHT_USER_ID,
+        agentId: user?.id,
+        userId: user?.id,
       });
       
       // Start listening after connection
