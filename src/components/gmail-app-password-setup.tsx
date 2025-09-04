@@ -3,53 +3,38 @@
 import { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Mail, Shield, CheckCircle, AlertCircle, Eye, EyeOff } from 'lucide-react';
+import { Mail, Shield, AlertCircle } from 'lucide-react';
 
 interface GmailSetupProps {
   onConnectionSuccess: (email: string) => void;
 }
 
-export default function GmailAppPasswordSetup({ onConnectionSuccess }: GmailSetupProps) {
-  const [email, setEmail] = useState('');
-  const [appPassword, setAppPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
+export default function GmailOAuthSetup({ onConnectionSuccess }: GmailSetupProps) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [success, setSuccess] = useState<string | null>(null);
 
   const handleConnect = async () => {
-    if (!email || !appPassword) {
-      setError('Please enter both email and app password');
-      return;
-    }
-
     setIsConnecting(true);
     setError(null);
 
     try {
-      const response = await fetch('/api/integrations/gmail/app-password', {
-        method: 'POST',
+      // Use OAuth flow instead of app password
+      const response = await fetch('/api/gmail/auth', {
+        method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          email,
-          appPassword,
-          testConnection: true
-        })
       });
 
       const data = await response.json();
 
-      if (response.ok) {
-        setSuccess(`Successfully connected ${email}!`);
-        onConnectionSuccess(email);
+      if (response.ok && data.authUrl) {
+        // Redirect to Google OAuth
+        window.location.href = data.authUrl;
       } else {
-        setError(data.error || 'Failed to connect Gmail');
+        setError(data.error || 'Failed to initiate Gmail connection');
       }
     } catch (error) {
       setError('Network error. Please try again.');
@@ -66,62 +51,24 @@ export default function GmailAppPasswordSetup({ onConnectionSuccess }: GmailSetu
           <span>Connect Your Gmail</span>
         </CardTitle>
         <CardDescription>
-          Simple setup using Gmail App Password - no complex OAuth required!
+          Connect your Gmail account securely using Google OAuth
         </CardDescription>
       </CardHeader>
       
       <CardContent className="space-y-6">
-        {/* Step-by-step instructions */}
+        {/* OAuth setup instructions */}
         <Alert className="border-blue-200 bg-blue-50 dark:bg-blue-900/20 dark:border-blue-800">
           <Shield className="w-4 h-4" />
           <AlertDescription className="text-sm">
-            <strong>Quick Setup (2 minutes):</strong>
-            <ol className="list-decimal list-inside mt-2 space-y-1">
-              <li>Go to your <a href="https://myaccount.google.com/apppasswords" target="_blank" className="text-blue-600 underline">Google Account App Passwords</a></li>
-              <li>Generate a new app password for "Mail"</li>
-              <li>Copy the 16-character password and paste it below</li>
-            </ol>
+            <strong>Secure OAuth Setup:</strong>
+            <ul className="list-disc list-inside mt-2 space-y-1">
+              <li>Click "Connect Gmail" to open Google's secure authorization</li>
+              <li>Sign in to your Google account and grant permissions</li>
+              <li>You'll be redirected back automatically once connected</li>
+              <li>Your credentials are stored securely and encrypted</li>
+            </ul>
           </AlertDescription>
         </Alert>
-
-        {/* Email input */}
-        <div className="space-y-2">
-          <Label htmlFor="email">Your Gmail Address</Label>
-          <Input
-            id="email"
-            type="email"
-            placeholder="your.email@gmail.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            disabled={isConnecting}
-          />
-        </div>
-
-        {/* App password input */}
-        <div className="space-y-2">
-          <Label htmlFor="appPassword">Gmail App Password</Label>
-          <div className="relative">
-            <Input
-              id="appPassword"
-              type={showPassword ? "text" : "password"}
-              placeholder="xxxx xxxx xxxx xxxx"
-              value={appPassword}
-              onChange={(e) => setAppPassword(e.target.value)}
-              disabled={isConnecting}
-              className="pr-10"
-            />
-            <button
-              type="button"
-              onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-            >
-              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-            </button>
-          </div>
-          <p className="text-xs text-gray-500">
-            This is the 16-character password from Google, not your regular Gmail password
-          </p>
-        </div>
 
         {/* Error/Success messages */}
         {error && (
@@ -133,22 +80,14 @@ export default function GmailAppPasswordSetup({ onConnectionSuccess }: GmailSetu
           </Alert>
         )}
 
-        {success && (
-          <Alert className="border-green-200 bg-green-50 dark:bg-green-900/20 dark:border-green-800">
-            <CheckCircle className="w-4 h-4" />
-            <AlertDescription className="text-green-700 dark:text-green-400">
-              {success}
-            </AlertDescription>
-          </Alert>
-        )}
 
         {/* Connect button */}
         <Button 
           onClick={handleConnect}
-          disabled={isConnecting || !email || !appPassword}
+          disabled={isConnecting}
           className="w-full bg-orange-500 hover:bg-orange-600 text-white"
         >
-          {isConnecting ? 'Connecting...' : 'Connect Gmail'}
+          {isConnecting ? 'Redirecting to Google...' : 'Connect Gmail'}
         </Button>
 
         {/* Security note */}
@@ -158,10 +97,11 @@ export default function GmailAppPasswordSetup({ onConnectionSuccess }: GmailSetu
             Security & Privacy
           </h4>
           <ul className="text-xs text-gray-600 dark:text-gray-400 space-y-1">
-            <li>• App passwords are safer than using your main password</li>
+            <li>• OAuth is the most secure way to connect your Gmail</li>
             <li>• Your credentials are encrypted and stored securely</li>
             <li>• You can revoke access anytime from your Google account</li>
-            <li>• We never see or store your main Gmail password</li>
+            <li>• We only access the permissions you explicitly grant</li>
+            <li>• No passwords are stored on our servers</li>
           </ul>
         </div>
 
@@ -171,9 +111,9 @@ export default function GmailAppPasswordSetup({ onConnectionSuccess }: GmailSetu
             Need help? Click here for troubleshooting
           </summary>
           <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 space-y-1">
-            <p><strong>Can't find App Passwords?</strong> Make sure 2-Step Verification is enabled on your Google account first.</p>
-            <p><strong>Invalid password?</strong> Copy the password exactly as shown, including spaces.</p>
-            <p><strong>Still having issues?</strong> Try generating a new app password and use that instead.</p>
+            <p><strong>Authorization failed?</strong> Make sure you're signed in to the correct Google account.</p>
+            <p><strong>Permission denied?</strong> You can grant permissions and try again.</p>
+            <p><strong>Still having issues?</strong> Try clearing your browser cache and cookies for this site.</p>
           </div>
         </details>
       </CardContent>

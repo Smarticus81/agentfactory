@@ -10,7 +10,7 @@
   "scope": "/",
   "lang": "en",
   "dir": "ltr",
-  "categories": ["productivity", "family", "utilities", "ai", "assistant"],
+  "categories": ["productivity", "personal", "utilities", "ai", "assistant"],
   "icons": [
     {
       "src": "/smarticus-logo.svg",

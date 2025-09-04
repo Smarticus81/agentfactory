@@ -437,14 +437,10 @@ export class ElevenLabsProvider extends EventEmitter implements VoiceProvider {
   // Process text through chat API with tools and RAG support
   async processTextWithLLM(text: string, agentConfig?: { agentId?: string; userId?: string; instructions?: string; agentName?: string }): Promise<string> {
     try {
-      // Get OpenAI API key from environment (client-side)
-      const openaiApiKey = process.env.NEXT_PUBLIC_OPENAI_API_KEY || '';
-
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-openai-key': openaiApiKey
         },
         body: JSON.stringify({
           message: text,
@@ -452,23 +448,12 @@ export class ElevenLabsProvider extends EventEmitter implements VoiceProvider {
           agentName: agentConfig?.agentName || 'ElevenLabs Assistant',
           agentId: agentConfig?.agentId,
           userId: agentConfig?.userId,
-          enableTools: true, // Enable tools for ElevenLabs
-          // Provide API key fallback in dev when server env may be unset
-          openaiApiKey: openaiApiKey
+          enableTools: true // Enable tools for ElevenLabs
         }),
       });
 
       if (!response.ok) {
-        const errorText = await response.text();
-        console.error('Chat API error response:', response.status, errorText);
-        
-        // If it's a 500 error, provide a fallback response instead of throwing
-        if (response.status === 500) {
-          console.warn('Chat API returned 500, providing fallback response');
-          return 'I\'m having trouble connecting to my language model right now. Please try again in a moment.';
-        }
-        
-        throw new Error(`Chat API failed: ${response.status} ${response.statusText}`);
+        throw new Error(`Chat API failed: ${response.statusText}`);
       }
 
       const result = await response.json();

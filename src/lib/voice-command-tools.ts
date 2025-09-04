@@ -379,6 +379,15 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
         });
         
         if (!emailResponse.ok) {
+          const errorData = await emailResponse.json();
+          if (errorData.setupRequired) {
+            return {
+              success: false,
+              error: 'Gmail not connected. Please set up Gmail integration first.',
+              action: 'gmail_setup_required',
+              setupRequired: true
+            };
+          }
           throw new Error('Failed to send email');
         }
         
@@ -447,17 +456,53 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
         };
 
       case 'search_emails':
+        const searchResponse = await fetch('/api/gmail/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userId,
+            query: args.query,
+            limit: args.limit || 10
+          })
+        });
+        
+        if (!searchResponse.ok) {
+          const errorData = await searchResponse.json();
+          if (errorData.setupRequired) {
+            return {
+              success: false,
+              error: 'Gmail not connected. Please set up Gmail integration first.',
+              action: 'gmail_setup_required',
+              setupRequired: true
+            };
+          }
+          throw new Error('Failed to search emails');
+        }
+        
+        const searchData = await searchResponse.json();
         return {
           success: true,
-          message: `Found emails matching "${args.query}"`,
+          message: `Found ${searchData.count} emails matching "${args.query}"`,
           action: 'emails_searched',
-          details: args
+          details: {
+            query: args.query,
+            emails: searchData.emails
+          }
         };
 
       case 'get_recent_emails':
         const emailsResponse = await fetch(`/api/gmail/send?userId=${userId}&limit=${args.limit || 10}`);
         
         if (!emailsResponse.ok) {
+          const errorData = await emailsResponse.json();
+          if (errorData.setupRequired) {
+            return {
+              success: false,
+              error: 'Gmail not connected. Please set up Gmail integration first.',
+              action: 'gmail_setup_required',
+              setupRequired: true
+            };
+          }
           throw new Error('Failed to get recent emails');
         }
         

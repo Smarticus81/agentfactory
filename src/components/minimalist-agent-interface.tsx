@@ -3,9 +3,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useEnhancedVoice } from '@/hooks/useEnhancedVoice';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Upload, FileText, Settings, X, Send, Zap, ExternalLink } from 'lucide-react';
+import { Mic, MicOff, Upload, FileText, Settings, X, Send, Zap, ExternalLink, Mail, Brain, Plug } from 'lucide-react';
 import Image from 'next/image';
 import Head from 'next/head';
+import PostDeploymentIntegrations from './post-deployment-integrations';
 
 interface MinimalistAgentInterfaceProps {
   agentName: string;
@@ -46,6 +47,7 @@ export default function MinimalistAgentInterface({
 }: MinimalistAgentInterfaceProps) {
   const [showSettings, setShowSettings] = useState(false);
   const [showDocUpload, setShowDocUpload] = useState(false);
+  const [showIntegrations, setShowIntegrations] = useState(false);
   const [uploadedDocs, setUploadedDocs] = useState<File[]>([]);
   const [textInput, setTextInput] = useState('');
   const [isActive, setIsActive] = useState(false);
@@ -492,9 +494,20 @@ export default function MinimalistAgentInterface({
               
               <div className="w-px h-5 bg-gray-200 mx-1.5" />
               
-              <button 
-                className="bg-none border-none cursor-pointer p-1.5 rounded-full transition-all duration-200 flex items-center justify-center hover:bg-gray-200" 
-                title="Options" 
+              <button
+                className="bg-none border-none cursor-pointer p-1.5 rounded-full transition-all duration-200 flex items-center justify-center hover:bg-gray-200"
+                title="Integrations"
+                type="button"
+                onClick={() => setShowIntegrations(true)}
+              >
+                <Plug className="w-4 h-4 text-gray-700" />
+              </button>
+
+              <div className="w-px h-5 bg-gray-200 mx-1.5" />
+
+              <button
+                className="bg-none border-none cursor-pointer p-1.5 rounded-full transition-all duration-200 flex items-center justify-center hover:bg-gray-200"
+                title="Options"
                 type="button"
                 onClick={() => setShowSettings(true)}
               >
@@ -609,6 +622,59 @@ export default function MinimalistAgentInterface({
                   <button
                     onClick={() => setShowSettings(false)}
                     className="w-full px-6 py-3 bg-orange-500 text-white rounded-xl hover:bg-orange-600 transition-colors font-semibold"
+                    style={{ background: primaryColor }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Integrations Modal - Modern Style */}
+      <AnimatePresence>
+        {showIntegrations && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-6"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto border border-gray-200/60"
+            >
+              <div className="p-8">
+                <div className="flex items-center justify-between mb-8">
+                  <h2 className="text-2xl font-semibold text-gray-900 flex items-center gap-3">
+                    <Plug className="h-6 w-6 text-blue-500" />
+                    Agent Integrations
+                  </h2>
+                  <button
+                    onClick={() => setShowIntegrations(false)}
+                    className="p-2 hover:bg-gray-100 rounded-xl transition-colors"
+                  >
+                    <X className="w-6 h-6 text-gray-500" />
+                  </button>
+                </div>
+
+                <PostDeploymentIntegrations
+                  agentId={user?.id || 'default-agent'}
+                  agentName={agentName}
+                  onIntegrationUpdate={() => {
+                    // Optional: refresh any local state if needed
+                    console.log('Integrations updated');
+                  }}
+                />
+
+                <div className="mt-8 flex justify-end">
+                  <button
+                    onClick={() => setShowIntegrations(false)}
+                    className="px-6 py-3 bg-blue-500 text-white rounded-xl hover:bg-blue-600 transition-colors font-semibold"
                     style={{ background: primaryColor }}
                   >
                     Close

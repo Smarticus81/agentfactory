@@ -2,8 +2,8 @@ import { MetadataRoute } from 'next';
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'Smarticus - Your Personal AI Assistant',
-    short_name: 'Smarticus',
+    name: 'FamilyAI - Your Personal AI Assistant',
+    short_name: 'FamilyAI',
     description: 'Create your own AI assistant for family organization, email management, and calendar coordination',
     start_url: '/',
     scope: '/',

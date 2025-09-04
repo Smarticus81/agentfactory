@@ -13,7 +13,7 @@ export function ThemeToggle() {
 
   useEffect(() => {
     setMounted(true);
-    const savedTheme = localStorage.getItem('smarticus-theme') as Theme;
+    const savedTheme = localStorage.getItem('familyai-theme') as Theme;
     if (savedTheme) {
       setTheme(savedTheme);
     }
@@ -33,7 +33,7 @@ export function ThemeToggle() {
       root.classList.add(theme);
     }
 
-    localStorage.setItem('smarticus-theme', theme);
+    localStorage.setItem('familyai-theme', theme);
   }, [theme, mounted]);
 
   const toggleTheme = () => {
@@ -97,7 +97,7 @@ export function ThemeToggleWithLabel() {
 
   useEffect(() => {
     setMounted(true);
-    const savedTheme = localStorage.getItem('smarticus-theme') as Theme;
+    const savedTheme = localStorage.getItem('familyai-theme') as Theme;
     if (savedTheme) {
       setTheme(savedTheme);
     }
@@ -117,7 +117,7 @@ export function ThemeToggleWithLabel() {
       root.classList.add(theme);
     }
 
-    localStorage.setItem('smarticus-theme', theme);
+    localStorage.setItem('familyai-theme', theme);
   }, [theme, mounted]);
 
   const toggleTheme = () => {

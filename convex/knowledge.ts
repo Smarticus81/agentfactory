@@ -374,7 +374,7 @@ export const queryKnowledge = query({
 
     // Simple text-based search (in real implementation, this would use vector similarity)
     const queryLower = args.query.toLowerCase();
-    const relevantItems = items.filter(item => 
+    const relevantItems = items.filter(item =>
       item.title.toLowerCase().includes(queryLower) ||
       item.content.toLowerCase().includes(queryLower) ||
       item.chunks.some(chunk => chunk.toLowerCase().includes(queryLower)) ||
@@ -392,5 +392,26 @@ export const queryKnowledge = query({
 
     const limit = args.limit || 10;
     return relevantItems.slice(0, limit);
+  },
+});
+
+// Get knowledge items linked to a specific agent
+export const getByAgent = query({
+  args: { userId: v.string(), agentId: v.string() },
+  handler: async (ctx, args) => {
+    if (!args.agentId) {
+      return [];
+    }
+
+    // Find all knowledge items that have this agentId in their metadata
+    const items = await ctx.db
+      .query("knowledgeItems")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .collect();
+
+    return items.filter(item =>
+      item.metadata?.agentId === args.agentId ||
+      item.metadata?.linkedAgentId === args.agentId
+    );
   },
 });

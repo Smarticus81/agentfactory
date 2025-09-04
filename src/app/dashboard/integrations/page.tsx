@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Zap, ExternalLink, Settings } from 'lucide-react';
-import GmailAppPasswordSetup from '@/components/gmail-app-password-setup';
+import GmailOAuthSetup from '@/components/gmail-app-password-setup';
 
 const integrations = {
   communication: [
@@ -104,35 +104,54 @@ export default function IntegrationsPage() {
   // Check URL parameters for OAuth results
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
-    const success = urlParams.get('success');
+    const gmailConnected = urlParams.get('gmail_connected');
     const error = urlParams.get('error');
     const email = urlParams.get('email');
-    const message = urlParams.get('message');
 
-    if (success === 'gmail_connected') {
+    if (gmailConnected === 'true') {
       setShowMessage({
         type: 'success',
         text: `Gmail connected successfully${email ? ` for ${decodeURIComponent(email)}` : ''}!`
       });
       setConnectionStatus(prev => ({ ...prev, gmail: 'connected' }));
-      
+
       // Clean up URL parameters
       window.history.replaceState({}, '', '/dashboard/integrations');
     } else if (error) {
       let errorText = 'Failed to connect Gmail';
-      if (message) errorText += `: ${decodeURIComponent(message)}`;
-      
+
+      // Provide more specific error messages
+      switch (error) {
+        case 'access_denied':
+          errorText = 'Gmail connection was cancelled. Please try again and grant the necessary permissions.';
+          break;
+        case 'invalid_request':
+          errorText = 'Invalid OAuth request. Please check your Google OAuth configuration.';
+          break;
+        case 'unauthorized_client':
+          errorText = 'Unauthorized client. Please verify your Google OAuth app configuration.';
+          break;
+        case 'unsupported_response_type':
+          errorText = 'Unsupported response type. Please contact support.';
+          break;
+        case 'invalid_scope':
+          errorText = 'Invalid scope requested. Please contact support.';
+          break;
+        default:
+          errorText += `: ${decodeURIComponent(error)}`;
+      }
+
       setShowMessage({
         type: 'error',
         text: errorText
       });
-      
+
       // Clean up URL parameters
       window.history.replaceState({}, '', '/dashboard/integrations');
     }
 
     // Auto-hide messages after 5 seconds
-    if (success || error) {
+    if (gmailConnected || error) {
       setTimeout(() => setShowMessage(null), 5000);
     }
   }, []);
@@ -315,7 +334,7 @@ export default function IntegrationsPage() {
                   ✕ Close
                 </Button>
               </div>
-              <GmailAppPasswordSetup onConnectionSuccess={handleGmailConnectionSuccess} />
+              <GmailOAuthSetup onConnectionSuccess={handleGmailConnectionSuccess} />
             </div>
           </div>
         )}

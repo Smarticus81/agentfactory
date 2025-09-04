@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { gmailService } from '@/lib/gmail-service';
 import { convex } from '@/lib/convex';
 import { api } from '../../../../../convex/_generated/api';
-import { GmailService } from '@/lib/gmail-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -15,29 +15,20 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get user's Gmail connection
-    const connections = await convex.query(api.connections.getConnections, {
-      userId,
-      type: 'gmail',
-    });
-
-    if (!connections || connections.length === 0) {
+    // Check if Gmail is authenticated
+    const isAuthenticated = await gmailService.isAuthenticated(userId);
+    if (!isAuthenticated) {
       return NextResponse.json(
-        { error: 'Gmail not connected. Please connect your Gmail account first.' },
-        { status: 400 }
+        { error: 'Gmail not authenticated. Please connect your Gmail account first.', setupRequired: true },
+        { status: 401 }
       );
     }
 
-    const connection = connections[0];
+    // Send email via Gmail API
+    const messageId = await gmailService.sendEmail(userId, to, subject, emailBody, cc, bcc);
 
-    // Initialize Gmail service
-    const gmailService = new GmailService(userId, convex);
-
-    // Send email
-    const result = await gmailService.sendEmail(to, subject, emailBody, cc, bcc);
-
-    // Store email in database
-    await convex.mutation(api.gmail.sendEmail, {
+    // Store email record in Convex for tracking
+    const result = await convex.mutation(api.gmail.sendEmail, {
       userId,
       to,
       subject,
@@ -49,9 +40,8 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      messageId: result.messageId,
-      threadId: result.threadId,
-      message: `Email sent to ${to}`,
+      emailId: messageId,
+      message: `Email sent successfully to ${to}`,
     });
 
   } catch (error) {
@@ -67,8 +57,7 @@ export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
-    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : undefined;
-    const analyze = searchParams.get('analyze') === 'true';
+    const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10;
 
     if (!userId) {
       return NextResponse.json(
@@ -77,43 +66,21 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // Get user's Gmail connection
-    const connections = await convex.query(api.connections.getConnections, {
-      userId,
-      type: 'gmail',
-    });
-
-    if (!connections || connections.length === 0) {
+    // Check if Gmail is authenticated
+    const isAuthenticated = await gmailService.isAuthenticated(userId);
+    if (!isAuthenticated) {
       return NextResponse.json(
-        { error: 'Gmail not connected. Please connect your Gmail account first.' },
-        { status: 400 }
+        { error: 'Gmail not authenticated. Please connect your Gmail account first.', setupRequired: true },
+        { status: 401 }
       );
     }
 
-    const connection = connections[0];
-
-    // Initialize Gmail service
-    const gmailService = new GmailService(userId, convex);
-
-    // Get recent emails
-    const emails = await gmailService.getRecentEmails(limit);
-
-    // Analyze emails if requested
-    let analyzedEmails = emails;
-    if (analyze) {
-      analyzedEmails = [];
-      for (const email of emails) {
-        const analysis = await gmailService.analyzeEmailContent(email);
-        analyzedEmails.push({
-          ...email,
-          analysis,
-        });
-      }
-    }
+    // Get recent emails from Gmail API
+    const emails = await gmailService.getRecentEmails(userId, limit);
 
     return NextResponse.json({
       success: true,
-      emails: analyzedEmails,
+      emails,
     });
 
   } catch (error) {

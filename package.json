@@ -8,17 +8,12 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "cleanup": "node cleanup-project.js",
-    "deploy:prod": "bash deploy-production.sh",
     "deploy:check": "npm run lint && npm run build",
-    "pwa:generate": "next build && next export",
-    "docs:upload": "echo 'Document upload system ready'",
-    "test:voice": "echo 'Voice provider testing available in UI'",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
     "convex:deploy:prod": "convex deploy --prod",
     "deploy:vercel": "vercel --prod",
-    "deploy:build": "pnpm build && pnpm convex:deploy:prod && pnpm deploy:vercel"
+    "deploy:full": "pnpm build && pnpm convex:deploy:prod && pnpm deploy:vercel"
   },
   "dependencies": {
     "@clerk/nextjs": "^4.29.1",
@@ -51,13 +46,16 @@
     "nodemailer": "^7.0.6",
     "openai": "^4.24.7",
     "pdf-parse": "^1.1.1",
-    "punycode": "^2.3.1",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-dropzone": "^14.2.3",
     "tailwind-merge": "^2.6.0",
     "tailwindcss-animate": "^1.0.7",
     "v0-sdk": "^0.7.1"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "pnpm": ">=8.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.6",
