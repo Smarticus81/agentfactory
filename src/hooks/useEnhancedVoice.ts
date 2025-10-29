@@ -75,6 +75,44 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
   const isProcessingRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
 
+  // Helper function to open Gmail OAuth popup
+  const openGmailOAuthPopup = useCallback(async (userId: string) => {
+    try {
+      console.log('Opening Gmail OAuth popup for user:', userId);
+
+      // Get the OAuth URL from the API
+      const response = await fetch(`/api/gmail/auth?userId=${encodeURIComponent(userId)}`);
+      const data = await response.json();
+
+      if (!data.url) {
+        throw new Error('Failed to get OAuth URL');
+      }
+
+      // Open popup window
+      const width = 600;
+      const height = 700;
+      const left = (window.screen.width - width) / 2;
+      const top = (window.screen.height - height) / 2;
+
+      const popup = window.open(
+        data.url,
+        'Gmail Authorization',
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
+      );
+
+      if (!popup) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
+      }
+
+      console.log('OAuth popup opened successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to open OAuth popup:', error);
+      setError(error instanceof Error ? error.message : 'Failed to open authorization window');
+      return false;
+    }
+  }, []);
+
   // Play audio buffer for voice synthesis
   const playAudioBuffer = useCallback(async (audioBuffer: ArrayBuffer) => {
     try {
@@ -507,13 +545,21 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
 
               console.log(`Tool ${toolName} result:`, result);
 
-              // If Gmail setup is required, provide helpful message
+              // If Gmail setup is required, open OAuth window
               if (result.setupRequired) {
-                const setupMessage = `To use Gmail features, please connect your Gmail account in the integrations settings. You can find this in your agent's configuration page.`;
+                console.log('Gmail setup required - opening OAuth popup');
+
+                const userId = config.userId || 'unknown';
+                const opened = await openGmailOAuthPopup(userId);
+
+                const setupMessage = opened
+                  ? `I've opened a window to connect your Gmail account. Please sign in with Google, grant the necessary permissions, and then try your request again once the authorization is complete.`
+                  : `To use Gmail features, I need you to connect your Gmail account. Please check your popup blocker settings and try again, or visit the integrations page in your agent settings to manually authorize Gmail access.`;
+
                 await openAIClientRef.current?.submitToolResult(toolCallId, {
                   success: false,
                   error: setupMessage,
-                  action: 'prompt_user_for_setup'
+                  action: opened ? 'oauth_window_opened' : 'oauth_blocked'
                 });
               } else {
                 // Send the result back to OpenAI
