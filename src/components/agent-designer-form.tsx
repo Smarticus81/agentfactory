@@ -180,28 +180,29 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
   return (
     <div className="space-y-8">
       {/* Progress Steps */}
-      <div className="flex items-center justify-center">
-        <div className="flex items-center space-x-4">
+      <div className="flex items-center justify-center overflow-x-auto px-4 pb-2">
+        <div className="flex items-center space-x-2 md:space-x-4 min-w-max">
           {[
-            { id: 1, title: 'Type' },
-            { id: 2, title: 'Details' },
-            { id: 3, title: 'Voice' },
-            { id: 4, title: 'Data & Integrations' },
-            { id: 5, title: 'Review' }
+            { id: 1, title: 'Type', shortTitle: 'Type' },
+            { id: 2, title: 'Details', shortTitle: 'Details' },
+            { id: 3, title: 'Voice', shortTitle: 'Voice' },
+            { id: 4, title: 'Data & Integrations', shortTitle: 'Data' },
+            { id: 5, title: 'Review', shortTitle: 'Review' }
           ].map((step) => (
             <div key={step.id} className="flex items-center">
               <div className="flex flex-col items-center">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium mb-1 ${
-                  step.id <= currentStep 
-                    ? 'bg-accent text-white' 
+                <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs md:text-sm font-medium mb-1 touch-manipulation ${
+                  step.id <= currentStep
+                    ? 'bg-accent text-white'
                     : 'bg-panel border border-hairline text-text-secondary'
                 }`}>
-                  {step.id < currentStep ? <CheckCircle className="w-4 h-4" /> : step.id}
+                  {step.id < currentStep ? <CheckCircle className="w-4 h-4 md:w-5 md:h-5" /> : step.id}
                 </div>
-                <span className="text-xs text-text-secondary">{step.title}</span>
+                <span className="text-xs text-text-secondary hidden sm:block">{step.title}</span>
+                <span className="text-xs text-text-secondary sm:hidden">{step.shortTitle}</span>
               </div>
               {step.id < 5 && (
-                <div className={`w-12 h-px mx-2 ${
+                <div className={`w-8 md:w-12 h-px mx-1 md:mx-2 ${
                   step.id < currentStep ? 'bg-accent' : 'bg-border'
                 }`} />
               )}
@@ -221,19 +222,19 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-          <div className="text-center mb-8">
-            <h2 className="text-h2 font-bold text-text-primary mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>Choose Assistant Type</h2>
-            <p className="text-text-secondary" style={{ fontFamily: 'Inter, sans-serif' }}>Select the type that best fits your needs</p>
-          </div>            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
+          <div className="text-center mb-6 md:mb-8 px-4">
+            <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>Choose Assistant Type</h2>
+            <p className="text-sm md:text-base text-text-secondary" style={{ fontFamily: 'Inter, sans-serif' }}>Select the type that best fits your needs</p>
+          </div>            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 max-w-5xl mx-auto px-4">
               {assistantTypes.map((type) => (
                 <motion.div
                   key={type.id}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => setAssistantConfig(prev => ({ ...prev, type: type.id as any }))}
-                  className={`bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-2xl p-6 border cursor-pointer transition-all duration-300 group ${
-                    assistantConfig.type === type.id 
-                      ? 'border-orange-500/60 bg-orange-50/60 dark:bg-orange-900/20 shadow-xl shadow-orange-500/10' 
+                  className={`bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-xl md:rounded-2xl p-4 md:p-6 border cursor-pointer transition-all duration-300 group active:scale-95 ${
+                    assistantConfig.type === type.id
+                      ? 'border-orange-500/60 bg-orange-50/60 dark:bg-orange-900/20 shadow-xl shadow-orange-500/10'
                       : 'border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl hover:border-orange-500/30'
                   }`}
                 >
@@ -304,12 +305,12 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            <div className="text-center mb-8">
-              <h2 className="text-h2 font-bold text-text-primary mb-2">Assistant Details</h2>
-              <p className="text-text-secondary">Give your assistant a name and description</p>
+            <div className="text-center mb-6 md:mb-8 px-4">
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary mb-2">Assistant Details</h2>
+              <p className="text-sm md:text-base text-text-secondary">Give your assistant a name and description</p>
             </div>
 
-            <div className="max-w-2xl mx-auto space-y-6">
+            <div className="max-w-2xl mx-auto space-y-4 md:space-y-6 px-4">
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-2">
                   Assistant Name *
@@ -318,8 +319,8 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                   type="text"
                   value={assistantConfig.name}
                   onChange={(e) => setAssistantConfig(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Family Helper, Study Buddy, Work Assistant"
-                  className="w-full px-4 py-3 border border-hairline rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                  placeholder="e.g., Family Helper, Study Buddy"
+                  className="w-full px-3 md:px-4 py-3 md:py-3.5 text-base border border-hairline rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent touch-manipulation"
                 />
               </div>
 
@@ -331,7 +332,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                   <select
                     value={assistantConfig.description}
                     onChange={(e) => setAssistantConfig(prev => ({ ...prev, description: e.target.value }))}
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-all"
+                    className="w-full px-3 md:px-4 py-3 md:py-3.5 text-base bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-all touch-manipulation"
                   >
                     <option value="">Select a description or write custom</option>
                     {descriptionOptions.map((desc, idx) => (
@@ -343,7 +344,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                     value={assistantConfig.description}
                     onChange={(e) => setAssistantConfig(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Or write a custom description..."
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-all"
+                    className="w-full px-3 md:px-4 py-3 md:py-3.5 text-base bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm transition-all touch-manipulation"
                   />
                 </div>
               </div>
@@ -357,7 +358,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                   onChange={(e) => setAssistantConfig(prev => ({ ...prev, instructions: e.target.value }))}
                   placeholder="Specific instructions for how your assistant should behave..."
                   rows={4}
-                  className="w-full px-4 py-3 border border-hairline rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                  className="w-full px-3 md:px-4 py-3 md:py-3.5 text-base border border-hairline rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent touch-manipulation"
                 />
               </div>
             </div>
@@ -373,12 +374,12 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            <div className="text-center mb-8">
-              <h2 className="text-h2 font-bold text-text-primary mb-2">Voice Configuration</h2>
-              <p className="text-text-secondary">Choose voice and wake words</p>
+            <div className="text-center mb-6 md:mb-8 px-4">
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary mb-2">Voice Configuration</h2>
+              <p className="text-sm md:text-base text-text-secondary">Choose voice and wake words</p>
             </div>
 
-            <div className="max-w-2xl mx-auto space-y-6">
+            <div className="max-w-2xl mx-auto space-y-4 md:space-y-6 px-4">
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-2">
                   Voice Provider
@@ -449,7 +450,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                     }
                   }))}
                   placeholder="hey assistant, hello helper"
-                  className="w-full px-4 py-3 border border-hairline rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
+                  className="w-full px-3 md:px-4 py-3 md:py-3.5 text-base border border-hairline rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent touch-manipulation"
                 />
                 <p className="text-xs text-text-secondary mt-1">Separate multiple wake words with commas</p>
               </div>
@@ -466,12 +467,12 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            <div className="text-center mb-8">
-              <h2 className="text-h2 font-bold text-text-primary mb-2">Data & Integrations</h2>
-              <p className="text-text-secondary">Connect data sources and external services</p>
+            <div className="text-center mb-6 md:mb-8 px-4">
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary mb-2">Data & Integrations</h2>
+              <p className="text-sm md:text-base text-text-secondary">Connect data sources and external services</p>
             </div>
 
-            <div className="max-w-4xl mx-auto space-y-8">
+            <div className="max-w-4xl mx-auto space-y-6 md:space-y-8 px-4">
               {/* Document Upload */}
               <div className="card-base p-6">
                 <h3 className="text-lg font-semibold mb-4 flex items-center">
@@ -524,7 +525,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                   <Database className="w-5 h-5 mr-2" />
                   Cloud Databases
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
                   {cloudDatabases.map((db) => (
                     <div
                       key={db.id}
@@ -569,7 +570,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                   </label>
                   
                   {assistantConfig.integrations?.email && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4 mt-4">
                       {[
                         { provider: 'Gmail', icon: Mail, color: 'text-red-500' },
                         { provider: 'Outlook', icon: Mail, color: 'text-blue-500' },
@@ -601,12 +602,12 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
             exit={{ opacity: 0, x: -20 }}
             className="space-y-6"
           >
-            <div className="text-center mb-8">
-              <h2 className="text-h2 font-bold text-text-primary mb-2">Review & Create</h2>
-              <p className="text-text-secondary">Review your assistant configuration</p>
+            <div className="text-center mb-6 md:mb-8 px-4">
+              <h2 className="text-xl md:text-2xl lg:text-3xl font-bold text-text-primary mb-2">Review & Create</h2>
+              <p className="text-sm md:text-base text-text-secondary">Review your assistant configuration</p>
             </div>
 
-            <div className="max-w-2xl mx-auto space-y-6">
+            <div className="max-w-2xl mx-auto space-y-4 md:space-y-6 px-4">
               <div className="card-base p-6">
                 <h3 className="text-lg font-semibold mb-4">Assistant Summary</h3>
                 <div className="space-y-3">
@@ -646,21 +647,21 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
       </AnimatePresence>
 
       {/* Navigation */}
-      <div className="flex justify-between items-center mt-8">
+      <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 mt-6 md:mt-8 px-4">
         <button
           onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
           disabled={currentStep === 1}
-          className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed"
+          className="btn-secondary disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] touch-manipulation"
         >
           Previous
         </button>
 
-        <div className="flex space-x-4">
+        <div className="flex space-x-3 sm:space-x-4">
           {currentStep < 5 ? (
             <button
               onClick={() => setCurrentStep(Math.min(5, currentStep + 1))}
               disabled={!canProceed()}
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-none min-h-[44px] touch-manipulation"
             >
               Next
               <ArrowRight className="w-4 h-4 ml-2" />
@@ -669,7 +670,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
             <button
               onClick={() => onSave(assistantConfig)}
               disabled={isSaving || !canProceed()}
-              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+              className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed flex-1 sm:flex-none min-h-[44px] touch-manipulation"
             >
               {isSaving ? (
                 <>

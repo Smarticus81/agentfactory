@@ -238,7 +238,7 @@ export default function Dashboard() {
               className="space-y-8"
             >
               {/* Stats Grid */}
-              <div className="grid grid-4">
+              <div className="grid grid-4 gap-4 md:gap-6">
                 {[
                   { label: 'Total Agents', value: stats.totalAgents, icon: Users, color: '#ff6b35' },
                   { label: 'Active Agents', value: stats.activeAgents, icon: Zap, color: '#28a745' },
@@ -284,12 +284,12 @@ export default function Dashboard() {
                     </button>
                   )}
                 </div>
-                <div className="grid grid-3">
+                <div className="grid grid-3 gap-4 md:gap-6">
                   <Link href="/dashboard/agent-designer">
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="card cursor-pointer"
+                      className="card cursor-pointer min-h-[80px] touch-manipulation active:scale-95"
                     >
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 rounded-lg flex-center" style={{ backgroundColor: 'rgba(255, 107, 53, 0.1)' }}>
@@ -311,7 +311,7 @@ export default function Dashboard() {
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="card cursor-pointer"
+                      className="card cursor-pointer min-h-[80px] touch-manipulation active:scale-95"
                     >
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 rounded-lg flex-center" style={{ backgroundColor: 'rgba(255, 107, 53, 0.1)' }}>
@@ -333,7 +333,7 @@ export default function Dashboard() {
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
-                      className="card cursor-pointer"
+                      className="card cursor-pointer min-h-[80px] touch-manipulation active:scale-95"
                     >
                       <div className="flex items-center space-x-4">
                         <div className="w-12 h-12 rounded-lg flex-center" style={{ backgroundColor: 'rgba(255, 107, 53, 0.1)' }}>
@@ -497,14 +497,14 @@ export default function Dashboard() {
               </div>
 
               {agents && agents.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
                   {agents.map((agent: Agent, index: number) => (
                   <motion.div
                     key={agent._id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.1 }}
-                    className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl transition-all duration-300 group cursor-pointer"
+                    className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-xl md:rounded-2xl p-4 md:p-6 border border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl transition-all duration-300 group cursor-pointer touch-manipulation active:scale-98"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center space-x-4">
