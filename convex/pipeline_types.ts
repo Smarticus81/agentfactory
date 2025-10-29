@@ -38,7 +38,7 @@ export const WEBRTC_PIPELINE_CONFIG = {
   isActive: true,
   priority: 100, // Highest priority - default
   metadata: {
-    model: "gpt-4o-realtime-preview-2025-06-03",
+    model: "gpt-realtime",
     transport: "webrtc",
     useInsecureApiKey: true,
     audioConfig: {
@@ -77,7 +77,7 @@ export const WEBSOCKET_PIPELINE_CONFIG = {
   isActive: false, // Not active by default
   priority: 50,
   metadata: {
-    model: "gpt-4o-realtime-preview-2025-06-03",
+    model: "gpt-realtime",
     transport: "websocket",
     protocols: ["realtime", "openai-beta.realtime-v1"],
     audioFormat: "pcm16",

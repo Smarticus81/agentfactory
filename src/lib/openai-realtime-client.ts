@@ -141,10 +141,10 @@ export class OpenAIRealtimeClient extends EventEmitter {
       }
       
       // Connect to OpenAI with voice configuration
-      console.log('Connecting to OpenAI with model: gpt-4o-realtime-preview-2025-06-03');
-      await this.session.connect({ 
+      console.log('Connecting to OpenAI with model: gpt-realtime');
+      await this.session.connect({
         apiKey: apiKey,
-        model: 'gpt-4o-realtime-preview-2025-06-03'
+        model: 'gpt-realtime'
       } as any);
       
       // Configure session after connection
