@@ -44,11 +44,12 @@ export default function ZenAgentPage() {
     );
   }
 
-  const { config } = published as any;
-  
+  const { config, ownerId } = published as any;
+
   // Transform the published config to match our zen interface expectations
   const agent = {
     id: agentId,
+    ownerId: ownerId, // Owner's userId for tool authentication
     name: config?.name ?? "Agent",
     description: config?.description ?? "AI Assistant",
     instructions: config?.instructions ?? "You are a helpful AI assistant.",

@@ -5,6 +5,7 @@ import { WakeWordDetector } from '@/lib/wake-word-detector';
 import { VoicePipelineManager } from '@/lib/voice-pipeline-manager';
 import { Voice } from '@/lib/voice-providers';
 import { OpenAIRealtimeClient } from '@/lib/openai-realtime-client';
+import { VOICE_COMMAND_TOOLS, executeVoiceCommand } from '@/lib/voice-command-tools';
 
 // Global singleton to prevent multiple OpenAI instances
 let globalOpenAIClient: OpenAIRealtimeClient | null = null;
@@ -206,7 +207,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
                 instructions: config.instructions,
                 voice: config.voice as any,
                 temperature: config.temperature,
-                tools: config.enableTools ? [] : undefined
+                tools: config.enableTools ? VOICE_COMMAND_TOOLS : undefined
               }).then(() => {
                 isGloballyConnected = true;
                 console.log('OpenAI connection established after wake word');
@@ -484,11 +485,62 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
             setResponse(prev => prev + delta);
           });
 
+          openAIClientRef.current.on('tool.call', async (toolCall: any) => {
+            console.log('OpenAI tool call received:', toolCall);
+
+            try {
+              const toolName = toolCall.function?.name || toolCall.name;
+              const toolArgs = typeof toolCall.function?.arguments === 'string'
+                ? JSON.parse(toolCall.function.arguments)
+                : toolCall.function?.arguments || toolCall.arguments || {};
+              const toolCallId = toolCall.id || toolCall.tool_call_id;
+
+              console.log(`Executing tool: ${toolName}`, toolArgs);
+
+              // Execute the tool with user and agent IDs
+              const result = await executeVoiceCommand(
+                toolName,
+                toolArgs,
+                config.userId || 'unknown',
+                config.agentId
+              );
+
+              console.log(`Tool ${toolName} result:`, result);
+
+              // If Gmail setup is required, provide helpful message
+              if (result.setupRequired) {
+                const setupMessage = `To use Gmail features, please connect your Gmail account in the integrations settings. You can find this in your agent's configuration page.`;
+                await openAIClientRef.current?.submitToolResult(toolCallId, {
+                  success: false,
+                  error: setupMessage,
+                  action: 'prompt_user_for_setup'
+                });
+              } else {
+                // Send the result back to OpenAI
+                await openAIClientRef.current?.submitToolResult(toolCallId, result);
+              }
+
+            } catch (error) {
+              console.error('Error executing tool:', error);
+              const errorResult = {
+                success: false,
+                error: error instanceof Error ? error.message : 'Tool execution failed'
+              };
+
+              try {
+                const toolCallId = toolCall.id || toolCall.tool_call_id;
+                await openAIClientRef.current?.submitToolResult(toolCallId, errorResult);
+              } catch (submitError) {
+                console.error('Failed to submit error result:', submitError);
+              }
+            }
+          });
+
           openAIClientRef.current.on('error', (error: any) => {
             console.error('OpenAI error:', error);
             setError(error.message || 'OpenAI connection error');
           });
-          
+
           clientsWithListeners.add(openAIClientRef.current);
         }
 

@@ -27,7 +27,7 @@ export class OpenAIRealtimeClient extends EventEmitter {
 
   constructor(config: { apiKey: string }) {
     super();
-    
+
     // Create the RealtimeAgent with default configuration
     this.agent = new RealtimeAgent({
       name: 'Voice Assistant',
@@ -105,6 +105,12 @@ export class OpenAIRealtimeClient extends EventEmitter {
       this.agent.instructions = config.instructions;
       // Configure voice on the agent itself
       (this.agent as any).voice = config.voice;
+
+      // Configure tools if provided
+      if (config.tools && config.tools.length > 0) {
+        console.log(`Configuring ${config.tools.length} tools for voice agent`);
+        (this.agent as any).tools = config.tools;
+      }
       
       // Configure voice settings
       console.log(`Configuring OpenAI voice: ${config.voice}`);
@@ -353,13 +359,39 @@ export class OpenAIRealtimeClient extends EventEmitter {
 
     try {
       console.log('Interrupting current response');
-      
+
       // Interrupt the current response
       this.session.interrupt();
-      
+
       console.log('Response interrupted successfully');
     } catch (error) {
       console.error('Failed to interrupt response:', error);
+    }
+  }
+
+  async submitToolResult(toolCallId: string, result: any): Promise<void> {
+    if (!this.session || !this.connected) {
+      throw new Error('Not connected');
+    }
+
+    try {
+      console.log('Submitting tool result for:', toolCallId, result);
+
+      // Send the tool call result back to OpenAI
+      this.session.sendMessage({
+        type: 'message',
+        role: 'function',
+        tool_call_id: toolCallId,
+        content: [{
+          type: 'text',
+          text: JSON.stringify(result)
+        }]
+      } as any);
+
+      console.log('Tool result submitted successfully');
+    } catch (error) {
+      console.error('Failed to submit tool result:', error);
+      throw error;
     }
   }
 
