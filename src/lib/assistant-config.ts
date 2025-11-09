@@ -125,7 +125,7 @@ function getToolCategory(toolName: string): string {
 // Voice pipeline configuration
 export const DEFAULT_VOICE_CONFIG = {
   provider: "openai",
-  model: "gpt-4o-realtime-preview",
+  model: "gpt-realtime",
   voice: "nova",
   temperature: 0.7,
   maxTokens: 1000,

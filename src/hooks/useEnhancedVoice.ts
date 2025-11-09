@@ -5,6 +5,7 @@ import { WakeWordDetector } from '@/lib/wake-word-detector';
 import { VoicePipelineManager } from '@/lib/voice-pipeline-manager';
 import { Voice } from '@/lib/voice-providers';
 import { OpenAIRealtimeClient } from '@/lib/openai-realtime-client';
+import { VOICE_COMMAND_TOOLS, executeVoiceCommand } from '@/lib/voice-command-tools';
 
 // Global singleton to prevent multiple OpenAI instances
 let globalOpenAIClient: OpenAIRealtimeClient | null = null;
@@ -73,6 +74,44 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
   const audioQueueRef = useRef<string[]>([]);
   const isProcessingRef = useRef(false);
   const audioContextRef = useRef<AudioContext | null>(null);
+
+  // Helper function to open Gmail OAuth popup
+  const openGmailOAuthPopup = useCallback(async (userId: string) => {
+    try {
+      console.log('Opening Gmail OAuth popup for user:', userId);
+
+      // Get the OAuth URL from the API
+      const response = await fetch(`/api/gmail/auth?userId=${encodeURIComponent(userId)}`);
+      const data = await response.json();
+
+      if (!data.url) {
+        throw new Error('Failed to get OAuth URL');
+      }
+
+      // Open popup window
+      const width = 600;
+      const height = 700;
+      const left = (window.screen.width - width) / 2;
+      const top = (window.screen.height - height) / 2;
+
+      const popup = window.open(
+        data.url,
+        'Gmail Authorization',
+        `width=${width},height=${height},left=${left},top=${top},toolbar=no,menubar=no`
+      );
+
+      if (!popup) {
+        throw new Error('Popup blocked. Please allow popups for this site.');
+      }
+
+      console.log('OAuth popup opened successfully');
+      return true;
+    } catch (error) {
+      console.error('Failed to open OAuth popup:', error);
+      setError(error instanceof Error ? error.message : 'Failed to open authorization window');
+      return false;
+    }
+  }, []);
 
   // Play audio buffer for voice synthesis
   const playAudioBuffer = useCallback(async (audioBuffer: ArrayBuffer) => {
@@ -206,7 +245,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
                 instructions: config.instructions,
                 voice: config.voice as any,
                 temperature: config.temperature,
-                tools: config.enableTools ? [] : undefined
+                tools: config.enableTools ? VOICE_COMMAND_TOOLS : undefined
               }).then(() => {
                 isGloballyConnected = true;
                 console.log('OpenAI connection established after wake word');
@@ -484,11 +523,70 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
             setResponse(prev => prev + delta);
           });
 
+          openAIClientRef.current.on('tool.call', async (toolCall: any) => {
+            console.log('OpenAI tool call received:', toolCall);
+
+            try {
+              const toolName = toolCall.function?.name || toolCall.name;
+              const toolArgs = typeof toolCall.function?.arguments === 'string'
+                ? JSON.parse(toolCall.function.arguments)
+                : toolCall.function?.arguments || toolCall.arguments || {};
+              const toolCallId = toolCall.id || toolCall.tool_call_id;
+
+              console.log(`Executing tool: ${toolName}`, toolArgs);
+
+              // Execute the tool with user and agent IDs
+              const result = await executeVoiceCommand(
+                toolName,
+                toolArgs,
+                config.userId || 'unknown',
+                config.agentId
+              );
+
+              console.log(`Tool ${toolName} result:`, result);
+
+              // If Gmail setup is required, open OAuth window
+              if (result.setupRequired) {
+                console.log('Gmail setup required - opening OAuth popup');
+
+                const userId = config.userId || 'unknown';
+                const opened = await openGmailOAuthPopup(userId);
+
+                const setupMessage = opened
+                  ? `I've opened a window to connect your Gmail account. Please sign in with Google, grant the necessary permissions, and then try your request again once the authorization is complete.`
+                  : `To use Gmail features, I need you to connect your Gmail account. Please check your popup blocker settings and try again, or visit the integrations page in your agent settings to manually authorize Gmail access.`;
+
+                await openAIClientRef.current?.submitToolResult(toolCallId, {
+                  success: false,
+                  error: setupMessage,
+                  action: opened ? 'oauth_window_opened' : 'oauth_blocked'
+                });
+              } else {
+                // Send the result back to OpenAI
+                await openAIClientRef.current?.submitToolResult(toolCallId, result);
+              }
+
+            } catch (error) {
+              console.error('Error executing tool:', error);
+              const errorResult = {
+                success: false,
+                error: error instanceof Error ? error.message : 'Tool execution failed'
+              };
+
+              try {
+                const toolCallId = toolCall.id || toolCall.tool_call_id;
+                await openAIClientRef.current?.submitToolResult(toolCallId, errorResult);
+              } catch (submitError) {
+                console.error('Failed to submit error result:', submitError);
+              }
+            }
+          });
+
           openAIClientRef.current.on('error', (error: any) => {
             console.error('OpenAI error:', error);
             setError(error.message || 'OpenAI connection error');
           });
-          
+
           clientsWithListeners.add(openAIClientRef.current);
         }
 

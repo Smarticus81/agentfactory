@@ -5,7 +5,7 @@
   "description": "Your family's personal AI assistant. Simple, secure, and designed for busy families.",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "npx convex deploy && next build",
     "start": "next start",
     "lint": "next lint",
     "deploy:check": "npm run lint && npm run build",
@@ -19,7 +19,7 @@
     "@clerk/nextjs": "^4.29.1",
     "@convex-dev/auth": "^0.0.88",
     "@convex-dev/react-query": "^0.0.0-alpha.5",
-    "@openai/agents": "^0.0.17",
+    "@openai/agents": "^0.2.1",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-label": "^2.1.7",

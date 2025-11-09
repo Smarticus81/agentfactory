@@ -239,7 +239,7 @@ export function getArchitectureConfig(tier: VoiceTier) {
   
   if (config.architecture === 'speech-to-speech') {
     return {
-      model: 'gpt-4o-realtime-preview',
+      model: 'gpt-realtime',
       connection: 'webrtc',
       features: ['native_audio', 'multimodal', 'low_latency']
     };

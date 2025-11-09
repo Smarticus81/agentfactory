@@ -365,6 +365,7 @@ export const getPublishedAgent = query({
 
     return {
       id: assistant._id,
+      ownerId: assistant.ownerId, // Include owner ID for tool authentication
       slug: assistant.name.toLowerCase().replace(/\s+/g, "-"),
       publishedAt: assistant.updatedAt,
       allowedOrigins: ["*"],
