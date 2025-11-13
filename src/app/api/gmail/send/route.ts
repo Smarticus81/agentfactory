@@ -1,19 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { gmailService } from '@/lib/gmail-service';
 import { convex } from '@/lib/convex';
 import { api } from '../../../../../convex/_generated/api';
 
 export async function POST(request: NextRequest) {
+  // Authenticate user with Clerk
+  const { userId: authenticatedUserId } = await auth();
+
+  if (!authenticatedUserId) {
+    return NextResponse.json(
+      { error: 'Unauthorized - You must be logged in' },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await request.json();
-    const { userId, to, subject, body: emailBody, cc, bcc, agentId } = body;
+    const { to, subject, body: emailBody, cc, bcc, agentId } = body;
 
-    if (!userId || !to || !subject || !emailBody) {
+    if (!to || !subject || !emailBody) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, to, subject, body' },
+        { error: 'Missing required fields: to, subject, body' },
         { status: 400 }
       );
     }
+
+    // Use authenticated user ID instead of trusting client
+    const userId = authenticatedUserId;
 
     // Check if Gmail is authenticated
     const isAuthenticated = await gmailService.isAuthenticated(userId);
@@ -54,17 +68,22 @@ export async function POST(request: NextRequest) {
 }
 
 export async function GET(request: NextRequest) {
+  // Authenticate user with Clerk
+  const { userId: authenticatedUserId } = await auth();
+
+  if (!authenticatedUserId) {
+    return NextResponse.json(
+      { error: 'Unauthorized - You must be logged in' },
+      { status: 401 }
+    );
+  }
+
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
     const limit = searchParams.get('limit') ? parseInt(searchParams.get('limit')!) : 10;
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+    // Use authenticated user ID instead of trusting client
+    const userId = authenticatedUserId;
 
     // Check if Gmail is authenticated
     const isAuthenticated = await gmailService.isAuthenticated(userId);

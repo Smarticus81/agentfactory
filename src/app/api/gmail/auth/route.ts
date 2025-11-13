@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { google } from 'googleapis';
 
 const oauth2Client = new google.auth.OAuth2(
@@ -23,9 +24,30 @@ export async function GET(request: NextRequest) {
       }
     });
   }
+
+  // Authenticate user with Clerk
+  const { userId: authenticatedUserId } = await auth();
+
+  if (!authenticatedUserId) {
+    return NextResponse.json(
+      { error: 'Unauthorized - You must be logged in to connect Gmail' },
+      { status: 401 }
+    );
+  }
+
   try {
     const searchParams = request.nextUrl.searchParams;
-    const userId = searchParams.get('userId') || 'default-user'; // Fallback for now
+    const requestedUserId = searchParams.get('userId');
+
+    // Validate that the requested userId matches the authenticated user
+    if (!requestedUserId || requestedUserId !== authenticatedUserId) {
+      return NextResponse.json(
+        { error: 'Forbidden - User ID mismatch' },
+        { status: 403 }
+      );
+    }
+
+    const userId = authenticatedUserId;
 
     console.log('Generating Gmail auth URL for userId:', userId);
     console.log('Redirect URI being used:', oauth2Client.redirectUri);

@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { google } from 'googleapis';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../../convex/_generated/api';
@@ -43,8 +44,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    // Use provided state or default to a fallback
-    const userId = state || 'default-user';
+    // Authenticate user with Clerk
+    const { userId: authenticatedUserId } = await auth();
+
+    if (!authenticatedUserId) {
+      console.error('Unauthorized callback attempt - no authenticated user');
+      const redirectUrl = `${process.env.NEXT_PUBLIC_APP_ORIGIN}/dashboard/integrations?error=${encodeURIComponent('Unauthorized - Please log in')}`;
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Validate that the state parameter matches the authenticated user
+    if (!state || state !== authenticatedUserId) {
+      console.error('User ID mismatch:', { state, authenticatedUserId });
+      const redirectUrl = `${process.env.NEXT_PUBLIC_APP_ORIGIN}/dashboard/integrations?error=${encodeURIComponent('Invalid authentication state')}`;
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    const userId = authenticatedUserId;
     console.log('Using userId:', userId);
 
     console.log('Exchanging code for tokens...');

@@ -1,17 +1,31 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { gmailService } from '@/lib/gmail-service';
 
 export async function POST(request: NextRequest) {
+  // Authenticate user with Clerk
+  const { userId: authenticatedUserId } = await auth();
+
+  if (!authenticatedUserId) {
+    return NextResponse.json(
+      { error: 'Unauthorized - You must be logged in' },
+      { status: 401 }
+    );
+  }
+
   try {
     const body = await request.json();
-    const { userId, query, limit = 20 } = body;
+    const { query, limit = 20 } = body;
 
-    if (!userId || !query) {
+    if (!query) {
       return NextResponse.json(
-        { error: 'Missing required fields: userId, query' },
+        { error: 'Missing required field: query' },
         { status: 400 }
       );
     }
+
+    // Use authenticated user ID instead of trusting client
+    const userId = authenticatedUserId;
 
     // Check if Gmail is authenticated
     const isAuthenticated = await gmailService.isAuthenticated(userId);
