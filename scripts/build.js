@@ -9,15 +9,12 @@ console.log('🔍 Build Environment:', process.env.VERCEL_ENV || 'local');
 console.log('📦 Production Build:', isProduction);
 
 try {
-  // Only deploy Convex in production
-  if (isProduction) {
-    console.log('🚀 Deploying Convex to production...');
-    execSync('npx convex deploy', { stdio: 'inherit' });
-    console.log('✅ Convex deployed successfully');
-  } else {
-    console.log('⏭️  Skipping Convex deployment (not production)');
-    console.log('   Preview builds use the existing Convex deployment');
-  }
+  // Deploy Convex before building Next.js
+  // Note: Preview builds will use the same Convex deployment as production
+  // This is acceptable for most use cases and avoids type generation issues
+  console.log('🚀 Deploying Convex...');
+  execSync('npx convex deploy --yes', { stdio: 'inherit' });
+  console.log('✅ Convex deployed successfully');
 
   // Always build Next.js
   console.log('📦 Building Next.js...');
