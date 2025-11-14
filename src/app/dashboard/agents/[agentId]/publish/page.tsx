@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
-import { api } from "../../../../../convex/_generated/api";
+import { api } from "../../../../../../convex/_generated/api";
 import { SignedIn, SignedOut, SignInButton } from "@clerk/nextjs";
 import { motion } from "framer-motion";
 import { ArrowLeft, Globe, Code, ExternalLink, Copy, CheckCircle, Settings } from "lucide-react";
