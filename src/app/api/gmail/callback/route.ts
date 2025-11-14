@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { google } from 'googleapis';
 import { ConvexHttpClient } from 'convex/browser';
-import { api } from '../../../../../../convex/_generated/api';
+import { api } from '../../../../convex/_generated/api';
 
 const oauth2Client = new google.auth.OAuth2(
   process.env.GOOGLE_CLIENT_ID,
