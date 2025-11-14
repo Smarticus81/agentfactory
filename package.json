@@ -5,7 +5,8 @@
   "description": "Your family's personal AI assistant. Simple, secure, and designed for busy families.",
   "scripts": {
     "dev": "next dev",
-    "build": "npx convex deploy && next build",
+    "build": "node scripts/build.js",
+    "build:next": "next build",
     "start": "next start",
     "lint": "next lint",
     "deploy:check": "npm run lint && npm run build",
