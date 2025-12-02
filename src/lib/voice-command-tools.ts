@@ -369,7 +369,6 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId,
             to: args.to,
             subject: args.subject,
             body: args.body,
@@ -460,7 +459,6 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            userId,
             query: args.query,
             limit: args.limit || 10
           })
@@ -491,7 +489,7 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
         };
 
       case 'get_recent_emails':
-        const emailsResponse = await fetch(`/api/gmail/send?userId=${userId}&limit=${args.limit || 10}`);
+        const emailsResponse = await fetch(`/api/gmail/send?limit=${args.limit || 10}`);
         
         if (!emailsResponse.ok) {
           const errorData = await emailsResponse.json();

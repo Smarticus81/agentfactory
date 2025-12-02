@@ -120,7 +120,7 @@ export default function PostDeploymentIntegrations({
 
     try {
       // Initiate Gmail OAuth flow
-      const response = await fetch('/api/gmail/auth', {
+      const response = await fetch(`/api/gmail/auth?userId=${encodeURIComponent(user.id)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,16 +13,22 @@ interface GmailSetupProps {
 }
 
 export default function GmailOAuthSetup({ onConnectionSuccess }: GmailSetupProps) {
+  const { user } = useUser();
   const [isConnecting, setIsConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleConnect = async () => {
+    if (!user) {
+      setError('You must be logged in to connect Gmail');
+      return;
+    }
+
     setIsConnecting(true);
     setError(null);
 
     try {
       // Use OAuth flow instead of app password
-      const response = await fetch('/api/gmail/auth', {
+      const response = await fetch(`/api/gmail/auth?userId=${encodeURIComponent(user.id)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
