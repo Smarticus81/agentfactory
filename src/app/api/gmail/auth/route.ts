@@ -18,9 +18,6 @@ export async function GET(request: NextRequest) {
         hasClientSecret: !!process.env.GOOGLE_CLIENT_SECRET,
         redirectUri: process.env.GMAIL_REDIRECT_URI || `${process.env.NEXT_PUBLIC_APP_ORIGIN}/api/gmail/callback`,
         appOrigin: process.env.NEXT_PUBLIC_APP_ORIGIN
-      },
-      oauth2Client: {
-        redirectUri: oauth2Client.redirectUri
       }
     });
   }
