@@ -5,9 +5,13 @@
   "description": "Your family's personal AI assistant. Simple, secure, and designed for busy families.",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node scripts/build.js",
+    "build:next": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
     "deploy:check": "npm run lint && npm run build",
     "convex:dev": "convex dev",
     "convex:deploy": "convex deploy",
@@ -19,7 +23,7 @@
     "@clerk/nextjs": "^4.29.1",
     "@convex-dev/auth": "^0.0.88",
     "@convex-dev/react-query": "^0.0.0-alpha.5",
-    "@openai/agents": "^0.0.17",
+    "@openai/agents": "^0.2.1",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.0.6",
     "@radix-ui/react-label": "^2.1.7",
@@ -58,14 +62,20 @@
     "pnpm": ">=8.0.0"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.1.5",
+    "@testing-library/react": "^14.1.2",
     "@types/node": "^20.10.6",
     "@types/react": "^18.2.46",
     "@types/react-dom": "^18.2.18",
+    "@vitejs/plugin-react": "^4.2.1",
+    "@vitest/ui": "^1.0.4",
     "autoprefixer": "^10.4.16",
     "eslint": "^8.56.0",
     "eslint-config-next": "14.0.4",
+    "jsdom": "^23.0.1",
     "postcss": "^8.4.33",
     "tailwindcss": "^3.4.0",
-    "typescript": "^5.3.3"
+    "typescript": "^5.3.3",
+    "vitest": "^1.0.4"
   }
 }

@@ -61,7 +61,7 @@ export function getEnabledTools(modules: {
   refunds: boolean;
 }): SquareTool[] {
   return SQUARE_TOOLS.filter(tool => {
-    const module = tool.name.split(".")[0];
-    return modules[module as keyof typeof modules];
+    const moduleName = tool.name.split(".")[0];
+    return modules[moduleName as keyof typeof modules];
   });
 }

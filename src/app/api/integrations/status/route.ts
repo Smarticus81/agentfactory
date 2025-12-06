@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Get documents for this agent
-    const documents = await convex.query(api.knowledgeItems.getByAgent, {
+    const documents = await convex.query(api.knowledge.getByAgent, {
       agentId: agentId || '',
       userId: userId
     });

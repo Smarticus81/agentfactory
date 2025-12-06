@@ -1,6 +1,132 @@
 // Voice command tools for Gmail and Calendar integrations
 // These tools can be called by voice assistants
 
+// Helper function to open OAuth window and wait for completion
+export async function openGmailOAuthWindow(userId: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    console.log('openGmailOAuthWindow called for userId:', userId);
+
+    const width = 600;
+    const height = 700;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+
+    // Open a blank popup immediately to avoid browser popup blocking
+    const popup = window.open(
+      '',
+      'Gmail OAuth',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    if (!popup || popup.closed) {
+      console.error('Popup was blocked or failed to open');
+      resolve(false);
+      return;
+    }
+
+    fetch(`/api/gmail/auth?userId=${userId}`)
+      .then(res => {
+        console.log('Auth API response status:', res.status);
+        return res.json();
+      })
+      .then(authData => {
+        console.log('Auth data received:', authData);
+
+        if (!authData.authUrl) {
+          console.error('No authUrl in response:', authData);
+          try { popup.close(); } catch { }
+          resolve(false);
+          return;
+        }
+
+        console.log('Navigating popup to OAuth URL');
+        try {
+          popup.location.href = authData.authUrl;
+        } catch (e) {
+          console.warn('Could not set popup location immediately:', e);
+        }
+
+        // Listen for OAuth completion message (supports string and object formats)
+        const handleMessage = (event: MessageEvent) => {
+          try {
+            const data = event.data;
+            if (data === 'gmail_oauth_success' || data?.type === 'GMAIL_AUTH_SUCCESS') {
+              console.log('Gmail auth successful (message)');
+              window.removeEventListener('message', handleMessage);
+              try { if (!popup.closed) popup.close(); } catch { }
+              resolve(true);
+            } else if (data === 'gmail_oauth_error' || data?.type === 'GMAIL_AUTH_ERROR') {
+              console.log('Gmail auth error (message)');
+              window.removeEventListener('message', handleMessage);
+              try { if (!popup.closed) popup.close(); } catch { }
+              resolve(false);
+            }
+          } catch { }
+        };
+        window.addEventListener('message', handleMessage);
+
+        // Fallback: poll for when popup returns to our origin callback
+        const pollInterval = setInterval(() => {
+          try {
+            let isClosed = false;
+            try {
+              isClosed = popup.closed;
+            } catch (e) {
+              // Ignore COOP/CORS errors when checking closed status
+            }
+
+            if (isClosed) {
+              clearInterval(pollInterval);
+              window.removeEventListener('message', handleMessage);
+              console.warn('Popup closed before completion');
+              resolve(false);
+              return;
+            }
+            // Check if popup has redirected back to our origin
+            let isBackAtOrigin = false;
+            try {
+              if (popup.location && popup.location.origin === window.location.origin && popup.location.pathname.includes('/api/gmail/callback')) {
+                isBackAtOrigin = true;
+              }
+            } catch (e) {
+              // Ignore cross-origin access errors
+            }
+
+            if (isBackAtOrigin) {
+              console.log('Detected popup returned to callback on same origin. Waiting for server processing...');
+              clearInterval(pollInterval);
+              window.removeEventListener('message', handleMessage);
+
+              // Wait a moment to allow the server to process the request and the callback script to run
+              setTimeout(() => {
+                try {
+                  if (!popup.closed) popup.close();
+                } catch { }
+                resolve(true);
+              }, 3000);
+            }
+          } catch {
+            // Ignore cross-origin access errors until it returns to our origin
+          }
+        }, 500);
+
+        // Timeout after 5 minutes
+        setTimeout(() => {
+          console.log('OAuth window timeout - no response received');
+          clearInterval(pollInterval);
+          window.removeEventListener('message', handleMessage);
+          try { if (!popup.closed) popup.close(); } catch { }
+          resolve(false);
+        }, 5 * 60 * 1000);
+      })
+      .catch(err => {
+        console.error('Error preparing OAuth window:', err);
+        try { popup.close(); } catch { }
+        resolve(false);
+      });
+  });
+}
+
 export const VOICE_COMMAND_TOOLS = [
   {
     type: "function",
@@ -15,7 +141,7 @@ export const VOICE_COMMAND_TOOLS = [
             description: "Email address or contact name to send to"
           },
           subject: {
-            type: "string", 
+            type: "string",
             description: "Email subject line"
           },
           body: {
@@ -32,6 +158,48 @@ export const VOICE_COMMAND_TOOLS = [
           }
         },
         required: ["to", "subject", "body"]
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "check_gmail",
+      description: "Check inbox and summarize recent emails. Use when user says 'check my Gmail', 'check inbox', 'read latest emails'.",
+      parameters: {
+        type: "object",
+        properties: {
+          limit: {
+            type: "number",
+            description: "Maximum number of emails to retrieve (default 10)"
+          },
+          maxResults: {
+            type: "number",
+            description: "Alias for limit (for compatibility)"
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "search_gmail",
+      description: "Alias of search_emails: search Gmail by sender/subject/content.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: {
+            type: "string",
+            description: "Search query - sender, subject, content"
+          },
+          limit: {
+            type: "number",
+            description: "Maximum number of emails to return (default 10)"
+          }
+        },
+        required: ["query"]
       }
     }
   },
@@ -56,7 +224,7 @@ export const VOICE_COMMAND_TOOLS = [
             description: "Start time in ISO format or natural language like '4 PM today', 'tomorrow at 2'"
           },
           end_time: {
-            type: "string", 
+            type: "string",
             description: "End time in ISO format or natural language"
           },
           location: {
@@ -103,7 +271,7 @@ export const VOICE_COMMAND_TOOLS = [
   {
     type: "function",
     function: {
-      name: "search_emails", 
+      name: "search_emails",
       description: "Search for emails. Use when user says 'find emails from John', 'show me emails about project', etc.",
       parameters: {
         type: "object",
@@ -127,11 +295,28 @@ export const VOICE_COMMAND_TOOLS = [
       name: "get_recent_emails",
       description: "Get recent emails. Use when user asks 'what are my recent emails', 'check my inbox', 'any new messages', etc.",
       parameters: {
-        type: "object", 
+        type: "object",
         properties: {
           limit: {
             type: "number",
             description: "Maximum number of emails to return (default 10)"
+          }
+        },
+        required: []
+      }
+    }
+  },
+  {
+    type: "function",
+    function: {
+      name: "connect_gmail",
+      description: "Connect Gmail account via OAuth. Use when user wants to connect their email or when Gmail authentication is required.",
+      parameters: {
+        type: "object",
+        properties: {
+          reason: {
+            type: "string",
+            description: "Why Gmail connection is needed (e.g., 'to check emails', 'to send email')"
           }
         },
         required: []
@@ -219,7 +404,7 @@ export const VOICE_COMMAND_TOOLS = [
             description: "What to be reminded about"
           },
           time: {
-            type: "string", 
+            type: "string",
             description: "When to remind - natural language like 'in 30 minutes', 'tomorrow at 9 AM'"
           },
           recurring: {
@@ -363,7 +548,65 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
 
   try {
     switch (toolName) {
+      case 'check_gmail':
+      case 'get_recent_emails': {
+        console.log('🔍 check_gmail/get_recent_emails - checking Gmail authentication...');
+        const statusCheck = await fetch(`/api/gmail/status?userId=${userId}`);
+        const statusData = await statusCheck.json();
+
+        if (!statusData.authenticated) {
+          const oauthSuccess = await openGmailOAuthWindow(userId);
+          if (!oauthSuccess) {
+            return {
+              success: false,
+              error: 'Gmail authentication is required to check emails. Please connect your Gmail account.',
+              action: 'gmail_oauth_required',
+              setupRequired: true
+            };
+          }
+        }
+
+        const limit = args.limit || args.maxResults || 10;
+        const resp = await fetch(`/api/gmail/check?userId=${userId}&limit=${limit}`);
+        if (!resp.ok) {
+          const errorData = await resp.json().catch(() => ({}));
+          if (errorData.setupRequired) {
+            return {
+              success: false,
+              error: 'Gmail not connected. Opening authentication window...',
+              action: 'gmail_oauth_required',
+              setupRequired: true,
+              autoConnect: true
+            };
+          }
+          throw new Error('Failed to retrieve emails');
+        }
+
+        const data = await resp.json();
+        return {
+          success: true,
+          message: `Retrieved ${data.emails?.length || 0} recent emails`,
+          action: 'recent_emails_retrieved',
+          details: { emails: data.emails || [] }
+        };
+      }
       case 'send_email':
+        // Check Gmail connection status first
+        const sendStatusCheck = await fetch(`/api/gmail/status?userId=${userId}`);
+        const sendStatusData = await sendStatusCheck.json();
+
+        if (!sendStatusData.authenticated) {
+          // Auto-trigger OAuth flow
+          return {
+            success: false,
+            error: 'Gmail not connected. Opening authentication window...',
+            action: 'gmail_oauth_required',
+            setupRequired: true,
+            autoConnect: true,
+            pendingAction: { type: 'send_email', args }
+          };
+        }
+
         // Make API call to send email
         const emailResponse = await fetch('/api/gmail/send', {
           method: 'POST',
@@ -377,20 +620,22 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
             agentId
           })
         });
-        
+
         if (!emailResponse.ok) {
           const errorData = await emailResponse.json();
           if (errorData.setupRequired) {
             return {
               success: false,
-              error: 'Gmail not connected. Please set up Gmail integration first.',
-              action: 'gmail_setup_required',
-              setupRequired: true
+              error: 'Gmail not connected. Opening authentication window...',
+              action: 'gmail_oauth_required',
+              setupRequired: true,
+              autoConnect: true,
+              pendingAction: { type: 'send_email', args }
             };
           }
           throw new Error('Failed to send email');
         }
-        
+
         const emailData = await emailResponse.json();
         return {
           success: true,
@@ -419,11 +664,11 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
             agentId
           })
         });
-        
+
         if (!calendarResponse.ok) {
           throw new Error('Failed to add calendar event');
         }
-        
+
         const calendarData = await calendarResponse.json();
         return {
           success: true,
@@ -439,11 +684,11 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
       case 'get_calendar_events':
         const dateRange = parseDateRange(args.date_range || 'today');
         const eventsResponse = await fetch(`/api/calendar/events?userId=${userId}&fromDate=${dateRange.start}&toDate=${dateRange.end}&limit=${args.limit || 10}`);
-        
+
         if (!eventsResponse.ok) {
           throw new Error('Failed to get calendar events');
         }
-        
+
         const eventsData = await eventsResponse.json();
         return {
           success: true,
@@ -456,6 +701,23 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
         };
 
       case 'search_emails':
+      case 'search_gmail':
+        // Check Gmail connection status first
+        const searchStatusCheck = await fetch(`/api/gmail/status?userId=${userId}`);
+        const searchStatusData = await searchStatusCheck.json();
+
+        if (!searchStatusData.authenticated) {
+          // Auto-trigger OAuth flow
+          return {
+            success: false,
+            error: 'Gmail not connected. Opening authentication window...',
+            action: 'gmail_oauth_required',
+            setupRequired: true,
+            autoConnect: true,
+            pendingAction: { type: 'search_emails', args }
+          };
+        }
+
         const searchResponse = await fetch('/api/gmail/search', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -465,20 +727,22 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
             limit: args.limit || 10
           })
         });
-        
+
         if (!searchResponse.ok) {
           const errorData = await searchResponse.json();
           if (errorData.setupRequired) {
             return {
               success: false,
-              error: 'Gmail not connected. Please set up Gmail integration first.',
-              action: 'gmail_setup_required',
-              setupRequired: true
+              error: 'Gmail not connected. Opening authentication window...',
+              action: 'gmail_oauth_required',
+              setupRequired: true,
+              autoConnect: true,
+              pendingAction: { type: 'search_emails', args }
             };
           }
           throw new Error('Failed to search emails');
         }
-        
+
         const searchData = await searchResponse.json();
         return {
           success: true,
@@ -490,37 +754,35 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
           }
         };
 
-      case 'get_recent_emails':
-        const emailsResponse = await fetch(`/api/gmail/send?userId=${userId}&limit=${args.limit || 10}`);
-        
-        if (!emailsResponse.ok) {
-          const errorData = await emailsResponse.json();
-          if (errorData.setupRequired) {
-            return {
-              success: false,
-              error: 'Gmail not connected. Please set up Gmail integration first.',
-              action: 'gmail_setup_required',
-              setupRequired: true
-            };
-          }
-          throw new Error('Failed to get recent emails');
+
+
+      case 'connect_gmail':
+        // Open OAuth window and wait for completion
+        const authSuccess = await openGmailOAuthWindow(userId);
+
+        if (authSuccess) {
+          return {
+            success: true,
+            message: 'Gmail connected successfully! You can now check your emails.',
+            action: 'gmail_connected',
+            requiresAuth: false
+          };
+        } else {
+          return {
+            success: false,
+            message: 'Gmail authentication was not completed. Please try again.',
+            action: 'gmail_auth_failed',
+            requiresAuth: true
+          };
         }
-        
-        const emailsData = await emailsResponse.json();
-        return {
-          success: true,
-          message: `Retrieved ${emailsData.emails.length} recent emails`,
-          action: 'recent_emails_retrieved',
-          details: { emails: emailsData.emails }
-        };
 
       case 'search_knowledge_base':
         const knowledgeResponse = await fetch(`/api/knowledge/search?userId=${userId}&query=${encodeURIComponent(args.query)}&limit=${args.limit || 5}`);
-        
+
         if (!knowledgeResponse.ok) {
           throw new Error('Failed to search knowledge base');
         }
-        
+
         const knowledgeData = await knowledgeResponse.json();
         return {
           success: true,
@@ -533,12 +795,47 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
         };
 
       case 'web_search':
-        return {
-          success: true,
-          message: `Search results for "${args.query}"`,
-          action: 'web_search_performed',
-          details: args
-        };
+        try {
+          const searchResp = await fetch('/api/integrations/web-search', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              query: args.query,
+              type: args.type
+            })
+          });
+
+          if (!searchResp.ok) {
+            const err = await searchResp.json();
+            throw new Error(err.error || 'Failed to perform web search');
+          }
+
+          const searchResults = await searchResp.json();
+          
+          // Create a summary string for the agent to read
+          const summary = searchResults.results
+            .map((r: any, i: number) => `${i + 1}. ${r.title}: ${r.snippet}`)
+            .join('\n\n');
+
+          return {
+            success: true,
+            message: `Found ${searchResults.count} results for "${args.query}"`,
+            action: 'web_search_performed',
+            details: {
+              query: args.query,
+              count: searchResults.count,
+              summary: summary,
+              results: searchResults.results
+            }
+          };
+        } catch (error: any) {
+          console.error('Web search tool error:', error);
+          return {
+            success: false,
+            error: `Search failed: ${error.message}`,
+            action: 'web_search_failed'
+          };
+        }
 
       case 'send_text_message':
         return {
@@ -613,7 +910,7 @@ export const executeVoiceCommand = async (toolName: string, args: any, userId: s
 function parseTimeToISO(timeString: string): string {
   // Simple parsing - in production, use a library like chrono-node
   const now = new Date();
-  
+
   if (timeString.includes('today') || timeString.includes('this')) {
     if (timeString.includes('4 PM') || timeString.includes('4pm')) {
       const today = new Date();
@@ -621,7 +918,7 @@ function parseTimeToISO(timeString: string): string {
       return today.toISOString();
     }
   }
-  
+
   if (timeString.includes('tomorrow')) {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
@@ -630,19 +927,19 @@ function parseTimeToISO(timeString: string): string {
     }
     return tomorrow.toISOString();
   }
-  
+
   // If it's already ISO format, return as is
   if (timeString.includes('T') && timeString.includes('Z')) {
     return timeString;
   }
-  
+
   // Default to 1 hour from now
   return new Date(Date.now() + 60 * 60 * 1000).toISOString();
 }
 
 function parseDateRange(range: string): { start: string; end: string } {
   const now = new Date();
-  
+
   switch (range.toLowerCase()) {
     case 'today':
       const startOfDay = new Date(now);
@@ -653,7 +950,7 @@ function parseDateRange(range: string): { start: string; end: string } {
         start: startOfDay.toISOString(),
         end: endOfDay.toISOString()
       };
-      
+
     case 'tomorrow':
       const tomorrow = new Date(now);
       tomorrow.setDate(tomorrow.getDate() + 1);
@@ -665,7 +962,7 @@ function parseDateRange(range: string): { start: string; end: string } {
         start: startOfTomorrow.toISOString(),
         end: endOfTomorrow.toISOString()
       };
-      
+
     case 'this week':
       const startOfWeek = new Date(now);
       startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
@@ -677,7 +974,7 @@ function parseDateRange(range: string): { start: string; end: string } {
         start: startOfWeek.toISOString(),
         end: endOfWeek.toISOString()
       };
-      
+
     default:
       // Default to today
       const defaultStart = new Date(now);

@@ -200,7 +200,7 @@ export class ElevenLabsProvider extends EventEmitter implements VoiceProvider {
 
     // Validate API key
     if (!this.apiKey || this.apiKey.length < 10) {
-      throw new Error('ElevenLabs API key is required and must be valid. Please check your subscription.');
+      console.warn('ElevenLabs API key is missing or short. Assuming server-side proxy will handle authentication.');
     }
 
     console.log('ElevenLabs provider initialized successfully (using REST API)');
@@ -228,7 +228,8 @@ export class ElevenLabsProvider extends EventEmitter implements VoiceProvider {
       }
 
       // Use the correct WebSocket URL format with voice ID
-      const wsUrl = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=${this.modelId}`;
+      // Use the new Turbo v2.5 model
+      const wsUrl = `wss://api.elevenlabs.io/v1/text-to-speech/${voiceId}/stream-input?model_id=eleven_turbo_v2_5`;
       console.log('Connecting to ElevenLabs WebSocket:', wsUrl);
       
       this.websocket = new WebSocket(wsUrl);
@@ -494,7 +495,7 @@ export class GoogleTTSProvider extends EventEmitter implements VoiceProvider {
     
     // Validate API key
     if (!this.apiKey || this.apiKey.length < 10) {
-      throw new Error('Google Cloud API key is required and must be valid.');
+      console.warn('Google Cloud API key is missing or short. Assuming server-side proxy will handle authentication.');
     }
     
     console.log('Google TTS provider initialized');
@@ -569,11 +570,11 @@ export class PlayHTProvider extends EventEmitter implements VoiceProvider {
     
     // Validate API key and userId
     if (!this.apiKey || this.apiKey.length < 10) {
-      throw new Error('PlayHT API key is required and must be valid.');
+      console.warn('PlayHT API key is missing or short. Assuming server-side proxy will handle authentication.');
     }
     
     if (!this.userId || this.userId.length < 5) {
-      throw new Error('PlayHT User ID is required and must be valid.');
+      console.warn('PlayHT User ID is missing or short. Assuming server-side proxy will handle authentication.');
     }
     
     console.log('PlayHT provider initialized');

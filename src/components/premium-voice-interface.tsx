@@ -8,6 +8,7 @@ import { useEnhancedVoice } from '@/hooks/useEnhancedVoice';
 interface PremiumVoiceInterfaceProps {
   agent: {
     id: string;
+    ownerId?: string; // Owner's userId for tool authentication
     name: string;
     description: string;
     instructions: string;
@@ -60,6 +61,7 @@ export default function PremiumVoiceInterface({ agent, apiKeys }: PremiumVoiceIn
           enableTools: agent.enableTools || false,
           ...apiKeys,
           agentId: agent.id,
+          userId: agent.ownerId, // Use agent owner's userId for tool authentication
         });
       } catch (error) {
         console.error('Failed to initialize voice:', error);

@@ -5,6 +5,8 @@ import { WakeWordDetector } from '@/lib/wake-word-detector';
 import { VoicePipelineManager } from '@/lib/voice-pipeline-manager';
 import { Voice } from '@/lib/voice-providers';
 import { OpenAIRealtimeClient } from '@/lib/openai-realtime-client';
+import { openGmailOAuthWindow, executeVoiceCommand } from '@/lib/voice-command-tools';
+import { VOICE_COMMAND_TOOLS } from '@/lib/voice-command-tools';
 
 // Global singleton to prevent multiple OpenAI instances
 let globalOpenAIClient: OpenAIRealtimeClient | null = null;
@@ -41,7 +43,7 @@ export interface UseEnhancedVoiceReturn {
   connectionStatus: string;
   availableVoices: Voice[];
   currentProvider: string;
-  
+
   // Actions
   startListening: () => Promise<void>;
   stopListening: () => void;
@@ -80,13 +82,13 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
       if (!audioContextRef.current) {
         audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       }
-      
+
       const audioData = await audioContextRef.current.decodeAudioData(audioBuffer.slice(0));
       const source = audioContextRef.current.createBufferSource();
       source.buffer = audioData;
       source.connect(audioContextRef.current.destination);
       source.start();
-      
+
       console.log('Playing audio buffer from voice provider');
     } catch (error) {
       console.error('Error playing audio buffer:', error);
@@ -98,32 +100,32 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
     try {
       // Only add the default provider
       let providerConfig = null;
-      
-      if (config.provider === 'elevenlabs' && config.elevenLabsApiKey) {
+
+      if (config.provider === 'elevenlabs') {
         providerConfig = {
           type: 'elevenlabs' as const,
-          config: { 
-            apiKey: config.elevenLabsApiKey,
+          config: {
+            apiKey: config.elevenLabsApiKey || '',
             streaming: true, // Enable ultra-low latency streaming
             context: config.context,
             instructions: config.instructions
           }
         };
-      } else if (config.provider === 'google' && config.googleApiKey) {
+      } else if (config.provider === 'google') {
         providerConfig = {
           type: 'google' as const,
-          config: { 
-            apiKey: config.googleApiKey,
+          config: {
+            apiKey: config.googleApiKey || '',
             context: config.context,
             instructions: config.instructions
           }
         };
-      } else if (config.provider === 'playht' && config.playhtApiKey && config.playhtUserId) {
+      } else if (config.provider === 'playht') {
         providerConfig = {
           type: 'playht' as const,
-          config: { 
-            apiKey: config.playhtApiKey,
-            userId: config.playhtUserId,
+          config: {
+            apiKey: config.playhtApiKey || '',
+            userId: config.playhtUserId || '',
             context: config.context,
             instructions: config.instructions
           }
@@ -146,17 +148,17 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
         voicePipelineRef.current.on('synthesis-complete', (data) => {
           console.log(`TTS completed in ${data.latency}ms`);
         });
-        
+
         voicePipelineRef.current.on('audio-chunk', (audioBuffer) => {
           // Play audio chunk immediately for streaming
           playAudioBuffer(audioBuffer);
         });
-        
+
         voicePipelineRef.current.on('synthesis-error', (error) => {
           console.error('Voice synthesis error:', error);
           setError(`Voice synthesis failed: ${error.message}`);
         });
-        
+
         voicePipelineRef.current.on('provider-switched', (newProvider: string) => {
           console.log(`Voice provider switched to: ${newProvider}`);
           setCurrentProvider(newProvider);
@@ -164,19 +166,15 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
 
         console.log(`Voice pipeline successfully initialized with ${config.provider} provider`);
       } else {
-        const missingKeys = [];
-        if (config.provider === 'elevenlabs' && !config.elevenLabsApiKey) missingKeys.push('ElevenLabs API key');
-        if (config.provider === 'google' && !config.googleApiKey) missingKeys.push('Google API key');
-        if (config.provider === 'playht' && (!config.playhtApiKey || !config.playhtUserId)) missingKeys.push('PlayHT API key/User ID');
-        
-        const errorMessage = `${config.provider} voice provider is not properly configured. Missing: ${missingKeys.join(', ')}`;
-        console.error(errorMessage);
-        throw new Error(errorMessage);
+        // Only complain if provider is not openai (which is handled separately) and config was not created
+        if (config.provider !== 'openai') {
+           console.warn(`Provider ${config.provider} configuration could not be created. Falling back to OpenAI.`);
+        }
       }
     } catch (error) {
       console.error('Failed to initialize voice pipeline:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      
+
       // If no providers could be initialized, provide a helpful message
       if (errorMessage.includes('No voice providers could be initialized')) {
         setError('No voice providers are available. Please check your API keys in the environment variables.');
@@ -195,7 +193,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
       onWakeWordDetected: async (word, confidence) => {
         console.log(`Wake word detected: "${word}" (confidence: ${confidence})`);
         setTranscript(`Wake word: "${word}"`);
-        
+
         // Determine which voice system to use based on provider
         if (config.provider === 'openai') {
           // Use OpenAI Realtime for OpenAI provider only
@@ -206,7 +204,9 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
                 instructions: config.instructions,
                 voice: config.voice as any,
                 temperature: config.temperature,
-                tools: config.enableTools ? [] : undefined
+                tools: config.enableTools ? VOICE_COMMAND_TOOLS : undefined,
+                userId: config.userId,
+                agentId: config.agentId
               }).then(() => {
                 isGloballyConnected = true;
                 console.log('OpenAI connection established after wake word');
@@ -217,7 +217,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
               setError('Failed to connect to voice assistant');
             }
           }
-          
+
           // Send OpenAI Realtime greeting
           if (openAIClientRef.current?.isConnected) {
             const shortGreeting = `The user just invoked you with the wake word. Greet them briefly as ${config.agentName} and ask how you can help, in English.`;
@@ -230,16 +230,16 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
         } else {
           // Use voice pipeline for ElevenLabs, Google, PlayHT, etc.
           console.log(`Wake word detected - using ${config.provider} voice pipeline`);
-          
+
           // Generate greeting using voice pipeline
           const greetingText = `Hello! I'm ${config.agentName}. How can I help you today?`;
           setResponse(greetingText);
-          
+
           if (voicePipelineRef.current) {
             try {
               console.log(`Synthesizing greeting with ${config.provider}: "${greetingText}"`);
               const audioBuffer = await voicePipelineRef.current.synthesize(greetingText, config.voice);
-              
+
               // Play the synthesized greeting audio
               if (audioBuffer && audioBuffer.byteLength > 0) {
                 await playAudioBuffer(audioBuffer);
@@ -253,20 +253,20 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
             }
           }
         }
-        
+
         setResponse('');
       },
       onCommandReceived: async (command, confidence) => {
         console.log(`Command received: "${command}" (confidence: ${confidence})`);
         setTranscript(command);
-        
+
         // Process command
         await processCommand(command);
       },
       onModeChange: (newMode) => {
         console.log(`Mode changed to: ${newMode}`);
         setMode(newMode);
-        
+
         if (newMode === 'shutdown') {
           setIsListening(false);
           setConnectionStatus('Shutdown - Press button to restart');
@@ -284,14 +284,200 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
     });
   }, []);
 
+  // Speak response using selected provider (only for non-OpenAI providers)
+  const speakResponse = useCallback(async (text: string) => {
+    if (!text) return;
+
+    // Don't speak if OpenAI Realtime is connected (it handles audio automatically)
+    if (openAIClientRef.current?.isConnected) {
+      console.log('Skipping manual TTS - OpenAI Realtime handles audio');
+      return;
+    }
+
+    try {
+      console.log('Speaking response:', { text, provider: configRef.current?.provider, voice: configRef.current?.voice });
+
+      if (voicePipelineRef.current && configRef.current?.provider !== 'openai') {
+        console.log(`Using ${configRef.current?.provider} voice provider for synthesis`);
+
+        // Switch to the correct provider if needed
+        if (configRef.current?.provider) {
+          await voicePipelineRef.current.switchProvider(configRef.current.provider);
+        }
+
+        console.log('Using external TTS provider with voice:', configRef.current?.voice);
+        const audioBuffer = await voicePipelineRef.current.synthesize(text, configRef.current?.voice!);
+
+        // If we get audio buffer directly (non-streaming), play it
+        if (audioBuffer && audioBuffer.byteLength > 0) {
+          await playAudioBuffer(audioBuffer);
+        }
+        // For streaming providers like ElevenLabs, audio is handled via events
+
+      } else {
+        const errorMessage = `Voice synthesis not available. ${configRef.current?.provider} provider is not properly initialized.`;
+        console.error(errorMessage);
+        setError(errorMessage);
+        throw new Error(errorMessage);
+      }
+    } catch (err) {
+      console.error('Error speaking response:', err);
+      throw err;
+    }
+  }, [playAudioBuffer]);
+
   // Process voice command
   const processCommand = useCallback(async (command: string) => {
     if (isProcessingRef.current) return;
-    
+
     isProcessingRef.current = true;
     setResponse('');
-    
+
     try {
+      // Minimal local fallback for Gmail intents while tool-calls are limited
+      const normalized = command.toLowerCase();
+      const isEmailIntent = normalized.includes('gmail') || normalized.includes('email');
+      if (isEmailIntent) {
+        try {
+          const userId = configRef.current?.userId;
+          if (!userId) {
+            setResponse('Please sign in so I can connect to your Gmail.');
+            if (!openAIClientRef.current?.isConnected) {
+              await speakResponse('Please sign in so I can connect to your Gmail.');
+            }
+            return;
+          }
+
+          // If OpenAI is speaking, stop immediately to avoid mismatch
+          if (openAIClientRef.current?.isConnected) {
+            await openAIClientRef.current.interruptResponse();
+          }
+
+          const statusRes = await fetch(`/api/gmail/status?userId=${userId}`);
+          const status = await statusRes.json();
+
+          const narrateEmails = async () => {
+            const result = await executeVoiceCommand(
+              'check_gmail',
+              { limit: 5 },
+              userId,
+              configRef.current?.agentId
+            );
+
+            if (!result.success) {
+              const message = result.error || 'I had trouble retrieving your Gmail. Please try again.';
+              setResponse(message);
+              if (!openAIClientRef.current?.isConnected) {
+                await speakResponse(message);
+              } else {
+                await openAIClientRef.current.interruptResponse();
+                await openAIClientRef.current.sendMessage(message, { force: true, role: 'system' });
+              }
+              return;
+            }
+
+            const emails = result.details?.emails || [];
+            if (!emails.length) {
+              const message = 'Your inbox looks clear right now. No recent emails found.';
+              setResponse(message);
+              if (openAIClientRef.current?.isConnected) {
+                await openAIClientRef.current.sendMessage(message, { force: true, role: 'system' });
+              } else {
+                await speakResponse(message);
+              }
+              return;
+            }
+
+            const summaries = emails.slice(0, 3).map((email: any) => {
+              const fromField = email.from;
+              let sender = typeof fromField === 'string' ? fromField : (fromField?.name || fromField?.email || 'Unknown sender');
+              const subject = email.subject || 'No subject';
+              const snippet = email.snippet ? ` — ${email.snippet}` : '';
+              return `${sender}: "${subject}"${snippet}`;
+            }).join('\n');
+
+            const message = `Here are your ${emails.length} most recent emails:\n${summaries}`;
+            setResponse(message);
+            if (openAIClientRef.current?.isConnected) {
+              await openAIClientRef.current.interruptResponse();
+              await openAIClientRef.current.sendMessage(message, { force: true, role: 'system' });
+            } else {
+              await speakResponse(message);
+            }
+          };
+
+          if (!status.authenticated) {
+            setResponse('Opening Gmail authorization. Please complete the popup...');
+            const ok = await openGmailOAuthWindow(userId);
+            if (ok) {
+              setResponse('Gmail connected. Verifying connection...');
+
+              // Poll for connection status to avoid race condition
+              let attempts = 0;
+              const maxAttempts = 15; // 15 * 1s = 15 seconds timeout
+              const poll = setInterval(async () => {
+                try {
+                  attempts++;
+                  const checkStatus = await fetch(`/api/gmail/status?userId=${userId}`);
+                  const newStatus = await checkStatus.json();
+
+                  if (newStatus.authenticated || attempts >= maxAttempts) {
+                    clearInterval(poll);
+                    if (newStatus.authenticated) {
+                      if (openAIClientRef.current?.isConnected) {
+                        await openAIClientRef.current.interruptResponse();
+                        await openAIClientRef.current.sendMessage(
+                          'The user has successfully connected Gmail. Confirm the connection and read out the latest emails that will be provided.',
+                          { force: true, role: 'system' }
+                        );
+                      }
+                      await narrateEmails();
+                    } else {
+                      const failMsg = 'Authorization seems to have failed after popup. Please try again.';
+                      setResponse(failMsg);
+                      if (openAIClientRef.current?.isConnected) {
+                        await openAIClientRef.current.sendMessage(failMsg, { force: true, role: 'system' });
+                      }
+                    }
+                  }
+                } catch (pollError) {
+                  clearInterval(poll);
+                  console.error('Error polling Gmail status:', pollError);
+                  setResponse('Error verifying Gmail connection.');
+                }
+              }, 1000);
+
+            } else {
+              setResponse('Authorization was cancelled or failed. Please try again.');
+              if (openAIClientRef.current?.isConnected) {
+                await openAIClientRef.current.interruptResponse();
+                await openAIClientRef.current.sendMessage(
+                  'Inform the user that the Gmail authorization did not complete and invite them to try again when ready.',
+                  { force: true, role: 'system' }
+                );
+              }
+            }
+            return;
+          }
+
+          // Already authenticated: fetch confirmation response via agent
+          setResponse('You are connected to Gmail. Let me check your inbox.');
+          if (openAIClientRef.current?.isConnected) {
+            await openAIClientRef.current.interruptResponse();
+            await openAIClientRef.current.sendMessage(
+              'The user is already connected to Gmail. Confirm this and read their most recent emails using the data provided next.',
+              { force: true, role: 'system' }
+            );
+          }
+          await narrateEmails();
+          return;
+        } catch (e) {
+          console.error('Local Gmail handler error:', e);
+          setResponse('I had trouble connecting to Gmail. Please try again.');
+          return;
+        }
+      }
+
       // Handle special termination command
       if (command === 'TERMINATION_DETECTED') {
         const goodbyeMessage = "Thanks for chatting! I'll be listening for your wake word.";
@@ -300,7 +486,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
         isProcessingRef.current = false;
         return;
       }
-      
+
       // Use appropriate provider for command processing
       if (configRef.current?.provider === 'openai') {
         // Use OpenAI Realtime for OpenAI provider
@@ -314,10 +500,10 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
       } else {
         // Use voice pipeline with text completion for other providers (ElevenLabs, Google, PlayHT, etc.)
         console.log(`Processing command with ${configRef.current?.provider} provider: "${command}"`);
-        
+
         try {
           let responseText = '';
-          
+
           // Use provider-specific LLM processing if available (ElevenLabs)
           if (configRef.current?.provider === 'elevenlabs' && voicePipelineRef.current) {
             const currentProvider = voicePipelineRef.current.getCurrentProviderInstance();
@@ -331,7 +517,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
               });
             }
           }
-          
+
           // Fallback to standard chat API for other providers
           if (!responseText) {
             console.log('Using standard chat API');
@@ -349,11 +535,11 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
                 enableTools: configRef.current?.provider === 'elevenlabs' // Enable tools for ElevenLabs
               })
             });
-            
+
             if (response.ok) {
               const data = await response.json();
               responseText = data.response || 'I understand, but I\'m not sure how to respond to that.';
-              
+
               // Log if RAG context was used
               if (data.hasContext) {
                 console.log('Response enhanced with RAG context from uploaded documents');
@@ -365,14 +551,14 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
               throw new Error('Failed to get text response');
             }
           }
-          
+
           setResponse(responseText);
-          
+
           // Synthesize response using voice pipeline
           if (voicePipelineRef.current) {
             console.log('Synthesizing with voice:', configRef.current?.voice);
             const audioBuffer = await voicePipelineRef.current.synthesize(responseText, configRef.current?.voice!);
-            
+
             // Play the synthesized audio
             if (audioBuffer && audioBuffer.byteLength > 0) {
               await playAudioBuffer(audioBuffer);
@@ -401,49 +587,10 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
     } finally {
       isProcessingRef.current = false;
     }
-  }, []);
+  }, [playAudioBuffer, speakResponse]);
 
   // Speak response using selected provider (only for non-OpenAI providers)
-  const speakResponse = useCallback(async (text: string) => {
-    if (!text) return;
-    
-    // Don't speak if OpenAI Realtime is connected (it handles audio automatically)
-    if (openAIClientRef.current?.isConnected) {
-      console.log('Skipping manual TTS - OpenAI Realtime handles audio');
-      return;
-    }
-    
-    try {
-      console.log('Speaking response:', { text, provider: configRef.current?.provider, voice: configRef.current?.voice });
-      
-      if (voicePipelineRef.current && configRef.current?.provider !== 'openai') {
-        console.log(`Using ${configRef.current?.provider} voice provider for synthesis`);
-        
-        // Switch to the correct provider if needed
-        if (configRef.current?.provider) {
-          await voicePipelineRef.current.switchProvider(configRef.current.provider);
-        }
-        
-        console.log('Using external TTS provider with voice:', configRef.current?.voice);
-        const audioBuffer = await voicePipelineRef.current.synthesize(text, configRef.current?.voice!);
-      
-        // If we get audio buffer directly (non-streaming), play it
-        if (audioBuffer && audioBuffer.byteLength > 0) {
-          await playAudioBuffer(audioBuffer);
-        }
-        // For streaming providers like ElevenLabs, audio is handled via events
-        
-      } else {
-        const errorMessage = `Voice synthesis not available. ${configRef.current?.provider} provider is not properly initialized.`;
-        console.error(errorMessage);
-        setError(errorMessage);
-        throw new Error(errorMessage);
-      }
-    } catch (err) {
-      console.error('Error speaking response:', err);
-      throw err;
-    }
-  }, []);
+
 
   // Connect to voice services
   const connect = useCallback(async (config: EnhancedVoiceConfig) => {
@@ -468,7 +615,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
         } else {
           console.log('Reusing existing OpenAI Realtime client instance');
         }
-        
+
         openAIClientRef.current = globalOpenAIClient;
         globalClientUsers++;
 
@@ -488,7 +635,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
             console.error('OpenAI error:', error);
             setError(error.message || 'OpenAI connection error');
           });
-          
+
           clientsWithListeners.add(openAIClientRef.current);
         }
 
@@ -505,7 +652,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
       setConnectionStatus('Connected - Press button to start');
       setCurrentProvider(config.provider);
       console.log('Connect function completed - isConnected should now be true');
-      
+
     } catch (err) {
       console.error('Failed to connect:', err);
       setError(err instanceof Error ? err.message : 'Connection failed');
@@ -516,11 +663,11 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
 
   // Start listening
   const startListening = useCallback(async () => {
-    console.log('startListening called - checking conditions:', { 
-      isConnected, 
-      wakeWordDetectorExists: !!wakeWordDetectorRef.current 
+    console.log('startListening called - checking conditions:', {
+      isConnected,
+      wakeWordDetectorExists: !!wakeWordDetectorRef.current
     });
-    
+
     // Only check if wake word detector exists (don't rely on React state timing)
     if (!wakeWordDetectorRef.current) {
       console.error('startListening failed - wake word detector not initialized');
@@ -570,7 +717,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
       if (openAIClientRef.current) {
         globalClientUsers--;
         console.log(`OpenAI client users: ${globalClientUsers}`);
-        
+
         // Only disconnect if this is the last user
         if (globalClientUsers <= 0) {
           console.log('Last user disconnecting - closing OpenAI client');
@@ -580,7 +727,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
           globalConnectionPromise = null;
           isGloballyConnected = false;
         }
-        
+
         openAIClientRef.current = null;
       }
 
@@ -592,7 +739,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
       setError(null);
       setConnectionStatus('Disconnected');
       setAvailableVoices([]);
-      
+
     } catch (err) {
       console.error('Error disconnecting:', err);
     }
@@ -613,7 +760,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
     if (openAIClientRef.current?.isConnected) {
       await openAIClientRef.current.interruptResponse();
     }
-    
+
     // Stop any ongoing TTS
     if ('speechSynthesis' in window) {
       speechSynthesis.cancel();
@@ -633,7 +780,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
     if (wakeWordDetectorRef.current) {
       wakeWordDetectorRef.current.setWakeWords(words);
     }
-    
+
     if (configRef.current) {
       configRef.current.wakeWords = words;
     }
@@ -644,7 +791,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
     return () => {
       disconnect();
     };
-  }, []);
+  }, [disconnect]);
 
   return {
     // State
@@ -657,7 +804,7 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
     connectionStatus,
     availableVoices,
     currentProvider,
-    
+
     // Actions
     startListening,
     stopListening,

@@ -82,11 +82,37 @@ export const VOICE_PIPELINE_CONFIGS: Record<VoiceTier, VoicePipelineConfig> = {
     ],
     pricing: 'Pro+ subscription required',
     architecture: 'chained'
+  },
+
+  'elevenlabs': {
+    tier: 'elevenlabs',
+    description: 'High-quality TTS with ElevenLabs voices and OpenAI intelligence',
+    features: [
+      'ElevenLabs Ultra-realistic TTS',
+      'OpenAI LLM & STT',
+      'Custom voice cloning',
+      'Low latency streaming'
+    ],
+    pipeline: {
+      stt: 'gpt-4o-transcribe',
+      llm: 'gpt-4o',
+      tts: 'eleven_multilingual_v2',
+      turnDetection: true,
+      bargeIn: true,
+      wakeWord: false,
+      streaming: true
+    },
+    limitations: [
+      'Requires separate ElevenLabs API key',
+      'Slightly higher latency than native OpenAI'
+    ],
+    pricing: 'Pro+ subscription required',
+    architecture: 'chained'
   }
 };
 
 // LiveKit Agents configuration for each tier
-export const LIVEKIT_AGENTS_CONFIGS = {
+export const LIVEKIT_AGENTS_CONFIGS: Record<VoiceTier, any> = {
   'starter': {
     framework: 'LiveKit Agents',
     description: 'Basic voice agent with LiveKit infrastructure',
@@ -166,11 +192,35 @@ export const LIVEKIT_AGENTS_CONFIGS = {
       monitoring: 'Full telemetry and custom deployments'
     },
     pricing: 'Pro+ subscription required'
+  },
+
+  'elevenlabs': {
+    framework: 'LiveKit Agents',
+    description: 'ElevenLabs powered voice agent',
+    features: [
+      'ElevenLabs TTS integration',
+      'Streaming STT with VAD',
+      'Automatic turn detection'
+    ],
+    components: {
+      stt: 'deepgram.STT()',
+      llm: 'openai.LLM()',
+      tts: 'elevenlabs.TTS()',
+      vad: 'silero.VAD.load()',
+      turnDetection: 'turn_detector.MultilingualModel()'
+    },
+    deployment: {
+      platform: 'LiveKit Cloud',
+      scaling: 'Automatic',
+      regions: 'us-east (N. Virginia)',
+      monitoring: 'Standard metrics'
+    },
+    pricing: 'Pro+ subscription required'
   }
 };
 
 // OpenAI Realtime API configuration for each tier
-export const OPENAI_REALTIME_CONFIGS = {
+export const OPENAI_REALTIME_CONFIGS: Record<VoiceTier, any> = {
   'starter': {
     apiType: 'rest',
     transcription: 'audio',
@@ -188,6 +238,12 @@ export const OPENAI_REALTIME_CONFIGS = {
     transcription: 'realtime',
     connection: 'websocket',
     features: ['streaming_stt', 'vad', 'wake_word', 'basic_tts']
+  },
+  'elevenlabs': {
+    apiType: 'realtime',
+    transcription: 'realtime',
+    connection: 'websocket',
+    features: ['streaming_stt', 'vad', 'elevenlabs_tts']
   }
 };
 
@@ -196,7 +252,7 @@ export function validateVoicePipeline(tier: VoiceTier, config: any): boolean {
   const tierConfig = VOICE_PIPELINE_CONFIGS[tier];
   
   // Check if required features are enabled for the tier
-  if (tier === 'pro' || tier === 'premium') {
+  if (tier === 'pro' || tier === 'premium' || tier === 'elevenlabs') {
     if (!config.turnDetection || !config.bargeIn) {
       return false;
     }
@@ -226,8 +282,8 @@ export function getRecommendedConfig(tier: VoiceTier) {
 export function canAccessTier(userPlan: string, requestedTier: VoiceTier): boolean {
   const tierAccess = {
     'Free': ['starter'],
-    'Pro': ['starter', 'pro'],
-    'Premium': ['starter', 'pro', 'premium']
+    'Pro': ['starter', 'pro', 'elevenlabs'],
+    'Premium': ['starter', 'pro', 'premium', 'elevenlabs']
   };
   
   return tierAccess[userPlan as keyof typeof tierAccess]?.includes(requestedTier) || false;
@@ -239,7 +295,7 @@ export function getArchitectureConfig(tier: VoiceTier) {
   
   if (config.architecture === 'speech-to-speech') {
     return {
-      model: 'gpt-4o-realtime-preview',
+      model: 'gpt-realtime',
       connection: 'webrtc',
       features: ['native_audio', 'multimodal', 'low_latency']
     };

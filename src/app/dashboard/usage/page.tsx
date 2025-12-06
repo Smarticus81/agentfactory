@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Clock, Mail, Search, Calendar, Globe, TrendingUp, TrendingDown, Activity } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
-import { usageTracker, initializeMockUsage } from "@/lib/usage-tracker";
+import { usageTracker } from "@/lib/usage-tracker";
 
 // Plan limits configuration
 const PLAN_LIMITS = {
@@ -84,9 +84,6 @@ export default function UsagePage() {
 
   useEffect(() => {
     if (user?.id) {
-      // Initialize mock data if needed
-      initializeMockUsage(user.id);
-      
       // Load real usage data
       const usage = usageTracker.getUserUsage(user.id);
       setAggregatedUsage({

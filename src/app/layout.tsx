@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: "/nexus-logo.svg", type: "image/svg+xml" },
+      { url: "/smarticus-logo.svg", type: "image/svg+xml" },
       { url: "/icon-192.png", sizes: "192x192", type: "image/png" },
       { url: "/icon-512.png", sizes: "512x512", type: "image/png" },
     ],
@@ -62,12 +62,12 @@ export default function RootLayout({
           <meta name="msapplication-tap-highlight" content="no" />
           
           <link rel="apple-touch-icon" href="/icon-192.png" />
-          <link rel="icon" type="image/svg+xml" href="/nexus-logo.svg" />
+          <link rel="icon" type="image/svg+xml" href="/smarticus-logo.svg" />
           <link rel="icon" type="image/png" sizes="32x32" href="/icon-192.png" />
           <link rel="icon" type="image/png" sizes="16x16" href="/icon-192.png" />
           <link rel="manifest" href="/manifest.json" />
-          <link rel="mask-icon" href="/nexus-logo.svg" color="#3B82F6" />
-          <link rel="shortcut icon" href="/nexus-logo.svg" />
+          <link rel="mask-icon" href="/smarticus-logo.svg" color="#3B82F6" />
+          <link rel="shortcut icon" href="/smarticus-logo.svg" />
         </head>
         <body className={inter.className}>
           <ConvexClientProvider>

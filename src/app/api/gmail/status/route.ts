@@ -1,20 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { gmailService } from '@/lib/gmail-service';
 
 export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get('userId');
+  // Authenticate user with Clerk
+  const { userId: authenticatedUserId } = await auth();
 
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId is required' },
-        { status: 400 }
-      );
-    }
+  if (!authenticatedUserId) {
+    return NextResponse.json(
+      { error: 'Unauthorized - You must be logged in' },
+      { status: 401 }
+    );
+  }
+
+  try {
+    // Use authenticated user ID instead of trusting client
+    const userId = authenticatedUserId;
 
     // Check authentication status
-    const isAuthenticated = await gmailService.isAuthenticated(userId);
+    const isAuthenticated = await gmailService.authenticateUser(userId);
     const userEmail = isAuthenticated ? await gmailService.getUserEmail(userId) : null;
 
     return NextResponse.json({

@@ -112,15 +112,6 @@ const descriptionOptions = [
   'Manages business operations efficiently'
 ];
 
-const cloudDatabases = [
-  { id: 'aws-rds', name: 'AWS RDS', icon: CloudCog, color: 'text-orange-500' },
-  { id: 'azure-sql', name: 'Azure SQL', icon: Cloud, color: 'text-blue-500' },
-  { id: 'firebase', name: 'Firebase', icon: Globe, color: 'text-yellow-500' },
-  { id: 'mongodb', name: 'MongoDB Atlas', icon: Database, color: 'text-green-500' },
-  { id: 'postgresql', name: 'PostgreSQL', icon: Server, color: 'text-blue-600' },
-  { id: 'mysql', name: 'MySQL', icon: Database, color: 'text-blue-400' }
-];
-
 export default function AgentDesignerForm({ initialData, onSave, isSaving, isEditing = false }: AgentDesignerFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [assistantConfig, setAssistantConfig] = useState<AssistantConfig>({
@@ -138,14 +129,8 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
       temperature: initialData?.voiceConfig?.temperature || 0.7,
       enableTools: initialData?.voiceConfig?.enableTools ?? true
     },
-    integrations: {
-      email: false,
-      cloudDatabases: [],
-      documentUpload: false
-    }
+    integrations: {}
   });
-
-  const [uploadedDocs, setUploadedDocs] = useState<File[]>([]);
 
   const canProceed = () => {
     switch (currentStep) {
@@ -153,28 +138,8 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
       case 2: return assistantConfig.name.trim() !== '';
       case 3: return true;
       case 4: return true;
-      case 5: return true;
       default: return false;
     }
-  };
-
-  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    setUploadedDocs(prev => [...prev, ...files]);
-  };
-
-  const removeDocument = (index: number) => {
-    setUploadedDocs(prev => prev.filter((_, i) => i !== index));
-  };
-
-  const handleIntegrationChange = (type: string, value: any) => {
-    setAssistantConfig(prev => ({
-      ...prev,
-      integrations: {
-        ...prev.integrations,
-        [type]: value
-      }
-    }));
   };
 
   return (
@@ -186,8 +151,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
             { id: 1, title: 'Type' },
             { id: 2, title: 'Details' },
             { id: 3, title: 'Voice' },
-            { id: 4, title: 'Data & Integrations' },
-            { id: 5, title: 'Review' }
+            { id: 4, title: 'Review' }
           ].map((step) => (
             <div key={step.id} className="flex items-center">
               <div className="flex flex-col items-center">
@@ -200,7 +164,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                 </div>
                 <span className="text-xs text-text-secondary">{step.title}</span>
               </div>
-              {step.id < 5 && (
+              {step.id < 4 && (
                 <div className={`w-12 h-px mx-2 ${
                   step.id < currentStep ? 'bg-accent' : 'bg-border'
                 }`} />
@@ -457,7 +421,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
           </motion.div>
         )}
 
-        {/* Step 4: Data & Integrations */}
+        {/* Step 4: Review & Save */}
         {currentStep === 4 && (
           <motion.div
             key="step4"
@@ -467,148 +431,13 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
             className="space-y-6"
           >
             <div className="text-center mb-8">
-              <h2 className="text-h2 font-bold text-text-primary mb-2">Data & Integrations</h2>
-              <p className="text-text-secondary">Connect data sources and external services</p>
-            </div>
-
-            <div className="max-w-4xl mx-auto space-y-8">
-              {/* Document Upload */}
-              <div className="card-base p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <FileText className="w-5 h-5 mr-2" />
-                  Document Upload (RAG)
-                </h3>
-                <div className="space-y-4">
-                  <div className="border-2 border-dashed border-hairline rounded-lg p-6 text-center">
-                    <Upload className="w-8 h-8 mx-auto mb-2 text-text-secondary" />
-                    <p className="text-sm text-text-secondary mb-2">Upload documents for context</p>
-                    <div className="flex justify-center space-x-4">
-                      <input
-                        type="file"
-                        multiple
-                        onChange={handleFileUpload}
-                        accept=".pdf,.doc,.docx,.txt,.md"
-                        className="hidden"
-                        id="file-upload"
-                      />
-                      <label htmlFor="file-upload" className="btn-secondary cursor-pointer">
-                        <Upload className="w-4 h-4 mr-2" />
-                        Upload Files
-                      </label>
-                      <button className="btn-secondary">
-                        <Camera className="w-4 h-4 mr-2" />
-                        Take Photo
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {uploadedDocs.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium">Uploaded Documents:</h4>
-                      {uploadedDocs.map((doc, idx) => (
-                        <div key={idx} className="flex items-center justify-between bg-panel p-2 rounded">
-                          <span className="text-sm">{doc.name}</span>
-                          <button onClick={() => removeDocument(idx)} className="text-red-500 text-sm">
-                            Remove
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Cloud Databases */}
-              <div className="card-base p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <Database className="w-5 h-5 mr-2" />
-                  Cloud Databases
-                </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {cloudDatabases.map((db) => (
-                    <div
-                      key={db.id}
-                      className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                        assistantConfig.integrations?.cloudDatabases?.includes(db.id)
-                          ? 'border-accent bg-accent/5'
-                          : 'border-hairline hover:border-accent/50'
-                      }`}
-                      onClick={() => {
-                        const current = assistantConfig.integrations?.cloudDatabases || [];
-                        const updated = current.includes(db.id)
-                          ? current.filter(id => id !== db.id)
-                          : [...current, db.id];
-                        handleIntegrationChange('cloudDatabases', updated);
-                      }}
-                    >
-                      <div className="flex items-center space-x-3">
-                        <db.icon className={`w-6 h-6 ${db.color}`} />
-                        <span className="font-medium text-sm">{db.name}</span>
-                      </div>
-                      <p className="text-xs text-text-secondary mt-1">Placeholder integration</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Email Integration */}
-              <div className="card-base p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center">
-                  <Mail className="w-5 h-5 mr-2" />
-                  Email Integration
-                </h3>
-                <div className="space-y-4">
-                  <label className="flex items-center space-x-3">
-                    <input
-                      type="checkbox"
-                      checked={assistantConfig.integrations?.email || false}
-                      onChange={(e) => handleIntegrationChange('email', e.target.checked)}
-                      className="w-4 h-4 text-accent"
-                    />
-                    <span>Enable email account integration</span>
-                  </label>
-                  
-                  {assistantConfig.integrations?.email && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                      {[
-                        { provider: 'Gmail', icon: Mail, color: 'text-red-500' },
-                        { provider: 'Outlook', icon: Mail, color: 'text-blue-500' },
-                        { provider: 'Yahoo', icon: Mail, color: 'text-purple-500' },
-                        { provider: 'Custom IMAP', icon: Server, color: 'text-gray-500' }
-                      ].map((email) => (
-                        <div key={email.provider} className="p-3 border border-hairline rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <email.icon className={`w-5 h-5 ${email.color}`} />
-                            <span className="font-medium">{email.provider}</span>
-                          </div>
-                          <button className="text-sm text-accent mt-2">Connect Account</button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </motion.div>
-        )}
-
-        {/* Step 5: Review */}
-        {currentStep === 5 && (
-          <motion.div
-            key="step5"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            className="space-y-6"
-          >
-            <div className="text-center mb-8">
-              <h2 className="text-h2 font-bold text-text-primary mb-2">Review & Create</h2>
-              <p className="text-text-secondary">Review your assistant configuration</p>
+              <h2 className="text-h2 font-bold text-text-primary mb-2">Review Your Agent</h2>
+              <p className="text-text-secondary">Review your configuration before creating your agent</p>
             </div>
 
             <div className="max-w-2xl mx-auto space-y-6">
               <div className="card-base p-6">
-                <h3 className="text-lg font-semibold mb-4">Assistant Summary</h3>
+                <h3 className="text-lg font-semibold mb-4">Agent Summary</h3>
                 <div className="space-y-3">
                   <div className="flex justify-between">
                     <span className="font-medium">Name:</span>
@@ -626,19 +455,13 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                     <span className="font-medium">Wake Words:</span>
                     <span>{assistantConfig.voiceConfig.wakeWords.join(', ')}</span>
                   </div>
-                  {assistantConfig.integrations?.email && (
-                    <div className="flex justify-between">
-                      <span className="font-medium">Email Integration:</span>
-                      <span>Enabled</span>
-                    </div>
-                  )}
-                  {uploadedDocs.length > 0 && (
-                    <div className="flex justify-between">
-                      <span className="font-medium">Documents:</span>
-                      <span>{uploadedDocs.length} uploaded</span>
-                    </div>
-                  )}
                 </div>
+              </div>
+              
+              <div className="card-base p-6 bg-blue-50 dark:bg-blue-900/20">
+                <p className="text-sm text-text-secondary dark:text-text-secondary-dark">
+                  After creating your agent, you can connect integrations like Gmail, Calendar, and upload documents from the Integrations page.
+                </p>
               </div>
             </div>
           </motion.div>
@@ -656,9 +479,9 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
         </button>
 
         <div className="flex space-x-4">
-          {currentStep < 5 ? (
+          {currentStep < 4 ? (
             <button
-              onClick={() => setCurrentStep(Math.min(5, currentStep + 1))}
+              onClick={() => setCurrentStep(Math.min(4, currentStep + 1))}
               disabled={!canProceed()}
               className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
             >
