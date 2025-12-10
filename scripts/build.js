@@ -5,10 +5,10 @@ const fs = require('fs');
 const path = require('path');
 
 // Check if we're in production environment
-const isProduction = process.env.VERCEL_ENV === 'production';
+const isProduction = process.env.NODE_ENV === 'production';
 const convexUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
 
-console.log('🔍 Build Environment:', process.env.VERCEL_ENV || 'local');
+console.log('🔍 Build Environment:', process.env.NODE_ENV || 'local');
 console.log('📦 Production Build:', isProduction);
 
 try {
