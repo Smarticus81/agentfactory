@@ -1,15 +1,27 @@
-import { ConvexReactClient } from "convex/react";
 import { ConvexHttpClient } from "convex/browser";
 
-// Client for React components (client-side)
-export const convexReactClient = new ConvexReactClient(
-  process.env.NEXT_PUBLIC_CONVEX_URL!
-);
+let convexClient: ConvexHttpClient | null = null;
 
-// Client for server-side API routes
-export const convex = new ConvexHttpClient(
-  process.env.NEXT_PUBLIC_CONVEX_URL!
-);
+export function getConvexClient(): ConvexHttpClient {
+  const deploymentUrl = process.env.NEXT_PUBLIC_CONVEX_URL;
+  const adminKey = process.env.CONVEX_DEPLOY_KEY;
 
-// Export the React client as default for backward compatibility
-export default convexReactClient;
+  if (!deploymentUrl) {
+    throw new Error("NEXT_PUBLIC_CONVEX_URL is not defined");
+  }
+
+  if (!adminKey) {
+    throw new Error("CONVEX_DEPLOY_KEY is not defined");
+  }
+
+  if (!convexClient) {
+    convexClient = new ConvexHttpClient(deploymentUrl, {
+      skipConvexDeploymentUrlCheck: true,
+    });
+    convexClient.setAdminAuth(adminKey);
+  }
+
+  return convexClient;
+}
+
+export const convex = getConvexClient();

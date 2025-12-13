@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useUser } from '@clerk/nextjs';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowRight, ArrowLeft, CheckCircle, Users, Building, GraduationCap, User, Mail, Calendar, Mic, Settings, Zap } from 'lucide-react';
+import { ArrowRight, ArrowLeft, CheckCircle, Users, Building, GraduationCap, User } from 'lucide-react';
 import Link from 'next/link';
 
 // Helper function for assistant naming
@@ -90,7 +90,7 @@ export default function OnboardingPage() {
   const { user, isLoaded } = useUser();
   
   const [currentStep, setCurrentStep] = useState(1);
-  const totalSteps = 8; // Increased to include new steps
+  const totalSteps = 6; // Removed connections and voice setup steps
   const [isCompleting, setIsCompleting] = useState(false);
   const [onboardingData, setOnboardingData] = useState<OnboardingData>({
     userType: null,
@@ -104,10 +104,6 @@ export default function OnboardingPage() {
       push: true,
       sms: false
     }
-  });
-  const [connectors, setConnectors] = useState({
-    gmail: { enabled: false, scopes: ['read', 'send'] },
-    calendar: { enabled: false, scopes: ['read', 'write'] }
   });
   const [voiceSettings, setVoiceSettings] = useState({
     pipeline: 'lite',
@@ -151,7 +147,6 @@ export default function OnboardingPage() {
           email: user.emailAddresses[0]?.emailAddress,
           name: user.fullName || user.firstName,
           authProvider: 'email', // Could be detected from user object
-          connectors,
           voicePipeline: voiceSettings.pipeline,
           wakeWord: voiceSettings.wakeWord,
           routines
@@ -184,9 +179,7 @@ export default function OnboardingPage() {
       case 3: return onboardingData.experience !== null;
       case 4: return onboardingData.goals.length > 0;
       case 5: return true; // Preferences are optional
-      case 6: return true; // Connections are optional
-      case 7: return true; // Voice setup is optional
-      case 8: return true; // Complete step
+      case 6: return true; // Complete step
       default: return false;
     }
   };
@@ -220,7 +213,7 @@ export default function OnboardingPage() {
         {/* Progress */}
         <div className="flex items-center justify-center mb-12">
           <div className="flex items-center space-x-4">
-            {['Profile', 'Use Cases', 'Experience', 'Goals', 'Preferences', 'Connections', 'Voice Setup', 'Complete'].map((label, idx) => {
+            {['Profile', 'Use Cases', 'Experience', 'Goals', 'Preferences', 'Complete'].map((label, idx) => {
               const step = idx + 1;
               return (
                 <div key={step} className="flex items-center">
@@ -532,199 +525,10 @@ export default function OnboardingPage() {
             </motion.div>
           )}
 
-          {/* Step 6: Service Connections */}
+          {/* Step 6: Summary and Complete */}
           {currentStep === 6 && (
             <motion.div
               key="step6"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
-            >
-              <div className="text-center mb-8">
-                <h2 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-2">
-                  Connect Your Services
-                </h2>
-                <p className="text-body text-text-secondary dark:text-text-secondary-dark">
-                  Connect Gmail and Calendar to enable email management and scheduling
-                </p>
-              </div>
-
-              <div className="max-w-2xl mx-auto space-y-6">
-                <div className="card-base p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <Mail className="w-8 h-8 text-blue-600" />
-                      <div>
-                        <h3 className="font-semibold text-text-primary dark:text-text-primary-dark">Gmail</h3>
-                        <p className="text-small text-text-secondary dark:text-text-secondary-dark">
-                          Send emails and manage your inbox with voice commands
-                        </p>
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={connectors.gmail.enabled}
-                        onChange={(e) => setConnectors({
-                          ...connectors,
-                          gmail: { ...connectors.gmail, enabled: e.target.checked }
-                        })}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
-                    </label>
-                  </div>
-                  {connectors.gmail.enabled && (
-                    <div className="text-small text-text-secondary dark:text-text-secondary-dark bg-blue-50 p-3 rounded">
-                      <strong>Permissions:</strong> Read emails, Send emails, Access contacts
-                    </div>
-                  )}
-                </div>
-
-                <div className="card-base p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                      <Calendar className="w-8 h-8 text-green-600" />
-                      <div>
-                        <h3 className="font-semibold text-text-primary dark:text-text-primary-dark">Google Calendar</h3>
-                        <p className="text-small text-text-secondary dark:text-text-secondary-dark">
-                          Schedule events and manage your calendar with voice commands
-                        </p>
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={connectors.calendar.enabled}
-                        onChange={(e) => setConnectors({
-                          ...connectors,
-                          calendar: { ...connectors.calendar, enabled: e.target.checked }
-                        })}
-                        className="sr-only peer"
-                      />
-                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-accent"></div>
-                    </label>
-                  </div>
-                  {connectors.calendar.enabled && (
-                    <div className="text-small text-text-secondary dark:text-text-secondary-dark bg-green-50 p-3 rounded">
-                      <strong>Permissions:</strong> View events, Create events, Modify events
-                    </div>
-                  )}
-                </div>
-
-                <div className="text-center text-small text-text-secondary dark:text-text-secondary-dark bg-yellow-50 p-3 rounded">
-                  <strong>Note:</strong> You can connect these services later from your dashboard settings
-                </div>
-              </div>
-            </motion.div>
-          )}
-
-          {/* Step 7: Voice Setup */}
-          {currentStep === 7 && (
-            <motion.div
-              key="step7"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="space-y-8"
-            >
-              <div className="text-center mb-8">
-                <h2 className="text-h2 font-semibold text-text-primary dark:text-text-primary-dark mb-2">
-                  Voice Assistant Setup
-                </h2>
-                <p className="text-body text-text-secondary dark:text-text-secondary-dark">
-                  Configure your voice assistant preferences
-                </p>
-              </div>
-
-              <div className="max-w-2xl mx-auto space-y-6">
-                <div className="card-base p-6">
-                  <h3 className="font-semibold text-text-primary dark:text-text-primary-dark mb-4">Voice Pipeline</h3>
-                  <div className="grid gap-4">
-                    {[
-                      { 
-                        id: 'lite', 
-                        name: 'Lite (Free)', 
-                        description: 'Basic voice commands, 30 minutes/month',
-                        icon: Mic,
-                        recommended: onboardingData.experience === 'beginner'
-                      },
-                      { 
-                        id: 'pro', 
-                        name: 'Pro ($9/month)', 
-                        description: 'Advanced features, 300 minutes/month, wake word',
-                        icon: Zap,
-                        recommended: onboardingData.experience === 'intermediate'
-                      },
-                      { 
-                        id: 'pro_plus', 
-                        name: 'Pro+ ($19/month)', 
-                        description: 'Premium features, 1000 minutes/month, custom wake word',
-                        icon: Settings,
-                        recommended: onboardingData.experience === 'advanced'
-                      }
-                    ].map((pipeline) => (
-                      <button
-                        key={pipeline.id}
-                        onClick={() => setVoiceSettings({ ...voiceSettings, pipeline: pipeline.id })}
-                        className={`card-base p-4 text-left transition-all ${
-                          voiceSettings.pipeline === pipeline.id 
-                            ? 'ring-2 ring-accent ring-offset-2' 
-                            : 'hover:-translate-y-1'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <pipeline.icon className="w-6 h-6 text-accent" />
-                            <div>
-                              <h4 className="font-medium text-text-primary dark:text-text-primary-dark">
-                                {pipeline.name}
-                                {pipeline.recommended && (
-                                  <span className="ml-2 text-xs bg-accent text-white px-2 py-1 rounded">
-                                    Recommended
-                                  </span>
-                                )}
-                              </h4>
-                              <p className="text-small text-text-secondary dark:text-text-secondary-dark">
-                                {pipeline.description}
-                              </p>
-                            </div>
-                          </div>
-                          {voiceSettings.pipeline === pipeline.id && (
-                            <CheckCircle className="w-5 h-5 text-accent" />
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {(voiceSettings.pipeline === 'pro' || voiceSettings.pipeline === 'pro_plus') && (
-                  <div className="card-base p-6">
-                    <h3 className="font-semibold text-text-primary dark:text-text-primary-dark mb-4">Wake Word</h3>
-                    <div className="space-y-3">
-                      <input
-                        type="text"
-                        value={voiceSettings.wakeWord}
-                        onChange={(e) => setVoiceSettings({ ...voiceSettings, wakeWord: e.target.value })}
-                        placeholder="e.g., Hey Family, Hello Assistant"
-                        className="w-full p-3 border border-hairline rounded-lg"
-                      />
-                      <p className="text-small text-text-secondary dark:text-text-secondary-dark">
-                        Choose a phrase to activate your assistant. Keep it 2-3 words and avoid common phrases.
-                      </p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-
-          {/* Step 8: Summary and Complete */}
-          {currentStep === 8 && (
-            <motion.div
-              key="step8"
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
@@ -751,26 +555,20 @@ export default function OnboardingPage() {
                       </div>
                     </div>
                     <div>
-                      <h3 className="font-medium text-text-primary dark:text-text-primary-dark mb-3">Features</h3>
+                      <h3 className="font-medium text-text-primary dark:text-text-primary-dark mb-3">Preferences</h3>
                       <div className="space-y-2 text-small">
                         <p><strong>Use Cases:</strong> {onboardingData.primaryUseCase.length} selected</p>
                         <p><strong>Goals:</strong> {onboardingData.goals.length} selected</p>
-                        <p><strong>Voice Pipeline:</strong> {voiceSettings.pipeline}</p>
                       </div>
-                    </div>
-                  </div>
-                  
-                  <div>
-                    <h3 className="font-medium text-text-primary dark:text-text-primary-dark mb-3">Connected Services</h3>
-                    <div className="space-y-2 text-small">
-                      <p><strong>Gmail:</strong> {connectors.gmail.enabled ? 'Connected' : 'Not connected'}</p>
-                      <p><strong>Calendar:</strong> {connectors.calendar.enabled ? 'Connected' : 'Not connected'}</p>
                     </div>
                   </div>
 
                   <div className="text-center bg-accent-light p-4 rounded-lg">
                     <p className="text-body text-accent font-medium">
                       Your {getAssistantName(onboardingData.userType || 'individual', user?.firstName || '')} is ready to help!
+                    </p>
+                    <p className="text-small text-text-secondary dark:text-text-secondary-dark mt-2">
+                      You can connect integrations like Gmail and Calendar from your dashboard anytime.
                     </p>
                   </div>
                 </div>

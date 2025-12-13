@@ -134,17 +134,8 @@ export default function DeploymentsPage() {
     return `<iframe src="${url}/embed" width="400" height="600" frameborder="0"></iframe>`;
   };
 
-  const getMockMetrics = (deploymentId: string): DeploymentMetrics => {
-    // Return empty/zero metrics for real deployments - remove all mock data
-    return {
-      totalSessions: 0,
-      activeUsers: 0,
-      avgSessionLength: 0,
-      totalInteractions: 0,
-      successRate: 0,
-      lastActivity: new Date().toISOString()
-    };
-  };
+  // Remove mock metrics - these should come from actual usage tracking
+  // For now, we'll hide the metrics until we have real data
 
   const formatDuration = (seconds: number) => {
     const minutes = Math.floor(seconds / 60);
@@ -220,7 +211,6 @@ export default function DeploymentsPage() {
               <div className="grid gap-4">
                 {deployments?.map((deployment: any) => {
                   const assistant = assistants?.find((a: any) => a._id === deployment.assistantId);
-                  const metrics = getMockMetrics(deployment._id);
                   const deploymentUrl = getDeploymentUrl(deployment);
                   
                   return (
@@ -338,32 +328,11 @@ export default function DeploymentsPage() {
                           </div>
                         </div>
 
-                        {/* Quick Metrics */}
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t">
-                          <div className="text-center">
-                            <p className="text-2xl font-bold text-blue-600" style={{ fontFamily: 'Inter, sans-serif' }}>
-                              {metrics.totalSessions || 0}
-                            </p>
-                            <p className="text-sm text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>Total Sessions</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-2xl font-bold text-green-600" style={{ fontFamily: 'Inter, sans-serif' }}>
-                              {metrics.activeUsers || 0}
-                            </p>
-                            <p className="text-sm text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>Active Users</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-2xl font-bold text-purple-600" style={{ fontFamily: 'Inter, sans-serif' }}>
-                              {metrics.avgSessionLength ? formatDuration(metrics.avgSessionLength) : '0m 0s'}
-                            </p>
-                            <p className="text-sm text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>Avg Session</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-2xl font-bold text-orange-600" style={{ fontFamily: 'Inter, sans-serif' }}>
-                              {metrics.successRate || 0}%
-                            </p>
-                            <p className="text-sm text-gray-600" style={{ fontFamily: 'Inter, sans-serif' }}>Success Rate</p>
-                          </div>
+                        {/* Deployment Info */}
+                        <div className="pt-4 border-t">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Deployed {new Date(deployment.createdAt).toLocaleDateString()}
+                          </p>
                         </div>
                       </CardContent>
                     </Card>
@@ -457,35 +426,19 @@ export default function DeploymentsPage() {
                 ) : (
                   <div className="space-y-6">
                     {deployments?.map((deployment: any) => {
-                      const metrics = getMockMetrics(deployment._id);
                       return (
                         <div key={deployment._id} className="border rounded-lg p-4">
                           <h4 className="font-semibold mb-4" style={{ fontFamily: 'Inter, sans-serif' }}>{deployment.name}</h4>
-                          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            <div className="bg-blue-50 p-4 rounded-lg">
-                              <h5 className="font-medium text-blue-800" style={{ fontFamily: 'Inter, sans-serif' }}>Usage Stats</h5>
-                              <div className="mt-2 space-y-1 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
-                                <p>Sessions: {metrics.totalSessions || 0}</p>
-                                <p>Interactions: {metrics.totalInteractions || 0}</p>
-                                <p>Avg Duration: {metrics.avgSessionLength ? formatDuration(metrics.avgSessionLength) : '0m 0s'}</p>
-                              </div>
-                            </div>
-                            <div className="bg-green-50 p-4 rounded-lg">
-                              <h5 className="font-medium text-green-800" style={{ fontFamily: 'Inter, sans-serif' }}>Performance</h5>
-                              <div className="mt-2 space-y-1 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
-                                <p>Success Rate: {metrics.successRate || 0}%</p>
-                                <p>Active Users: {metrics.activeUsers || 0}</p>
-                                <p>Response Time: ~0.8s</p>
-                              </div>
-                            </div>
-                            <div className="bg-purple-50 p-4 rounded-lg">
-                              <h5 className="font-medium text-purple-800" style={{ fontFamily: 'Inter, sans-serif' }}>Activity</h5>
-                              <div className="mt-2 space-y-1 text-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
-                                <p>Last Activity: {new Date(metrics.lastActivity).toLocaleDateString()}</p>
-                                <p>Peak Hours: N/A</p>
-                                <p>Weekly Sessions: {Math.floor((metrics.totalSessions || 0) / 4)}</p>
-                              </div>
-                            </div>
+                          <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                            <p className="text-sm text-gray-600 dark:text-gray-400">
+                              Status: <span className="font-medium text-gray-900 dark:text-white">{deployment.status}</span>
+                            </p>
+                            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                              Deployed: <span className="font-medium">{new Date(deployment.createdAt).toLocaleDateString()}</span>
+                            </p>
+                            <p className="text-sm text-gray-400 dark:text-gray-500 mt-4">
+                              Analytics and usage metrics will be available once your deployment receives traffic
+                            </p>
                           </div>
                         </div>
                       );

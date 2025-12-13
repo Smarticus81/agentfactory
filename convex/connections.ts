@@ -323,6 +323,56 @@ export const saveGmailTokens = mutation({
   },
 });
 
+export const checkGmailConnection = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const connection = await ctx.db
+      .query("connections")
+      .withIndex("by_user", (q) => q.eq("userId", args.userId))
+      .filter((q) => q.eq(q.field("type"), "gmail"))
+      .first();
+
+    if (!connection || connection.status !== "active") {
+      return { 
+        connected: false, 
+        email: null,
+        requiresAuth: true 
+      };
+    }
+
+    try {
+      const tokenData = JSON.parse(connection.tokenRef);
+
+      // Check if token is expired
+      const now = Date.now();
+      const expiryBuffer = 5 * 60 * 1000; // 5 minutes buffer
+      const isExpired = tokenData.expiryDate && (tokenData.expiryDate * 1000) < (now + expiryBuffer);
+
+      if (isExpired) {
+        return { 
+          connected: false, 
+          email: tokenData.email || null,
+          requiresAuth: true,
+          expired: true
+        };
+      }
+
+      return {
+        connected: true,
+        email: tokenData.email || null,
+        requiresAuth: false
+      };
+    } catch (error) {
+      console.error("Error checking Gmail connection:", error);
+      return { 
+        connected: false, 
+        email: null,
+        requiresAuth: true 
+      };
+    }
+  },
+});
+
 export const getGmailTokens = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
@@ -346,8 +396,6 @@ export const getGmailTokens = query({
 
       if (isExpired) {
         console.log(`Gmail token expired for user ${args.userId}, needs refresh`);
-        // Don't return expired tokens - let the client handle refresh
-        return null;
       }
 
       return {
@@ -356,6 +404,7 @@ export const getGmailTokens = query({
         refreshToken: tokenData.refreshToken,
         tokenType: tokenData.tokenType,
         expiryDate: tokenData.expiryDate,
+        expired: isExpired,
       };
     } catch (error) {
       console.error("Error parsing Gmail tokens:", error);

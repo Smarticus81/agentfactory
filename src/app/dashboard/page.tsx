@@ -5,7 +5,7 @@ import { useUser } from '@clerk/nextjs';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '../../../convex/_generated/api';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Plus, Mic, Settings, Zap, BarChart3, Users, Calendar, Package, Archive, RotateCcw, Star, Eye, Trash2 } from 'lucide-react';
+import { Plus, Mic, Settings, Zap, BarChart3, Users, Calendar, Package, Archive, RotateCcw, Star, Eye, Trash2, Clock, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import DashboardLayout from '@/components/dashboard-layout';
 import AgentActionsMenu from '@/components/agent-actions-menu';
@@ -30,6 +30,8 @@ export default function Dashboard() {
     includeArchived: showArchived 
   });
   const [selectedView, setSelectedView] = useState<'overview' | 'agents' | 'analytics'>('overview');
+  const [usageData, setUsageData] = useState<any>(null);
+  const [loadingUsage, setLoadingUsage] = useState(true);
   
   // Check onboarding status
   useEffect(() => {
@@ -58,6 +60,20 @@ export default function Dashboard() {
       setIsCheckingOnboarding(false);
     }
   }, [user?.id, agents]);
+
+  useEffect(() => {
+    if (user?.id) {
+      fetch(`/api/usage?userId=${user.id}`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            setUsageData(data.usageData);
+          }
+        })
+        .catch(err => console.error('Failed to load usage data', err))
+        .finally(() => setLoadingUsage(false));
+    }
+  }, [user?.id]);
   
   // Mutations
   const deleteAgentMutation = useMutation(api.assistants.deleteAgent);
@@ -73,14 +89,13 @@ export default function Dashboard() {
     isLoading: boolean;
   }>({ isOpen: false, type: 'delete', agentId: '', agentName: '', isLoading: false });
 
+  // Get real usage data from usage tracker
   const stats = {
     totalAgents: agents?.filter((a: Agent) => !a.isArchived)?.length || 0,
     activeAgents: agents?.filter((a: Agent) => a.isActive && !a.isArchived)?.length || 0,
     archivedAgents: agents?.filter((a: Agent) => a.isArchived)?.length || 0,
-    totalInteractions: 1247 + (agents?.length || 0) * 23, // Dynamic calculation based on agents
-    avgResponseTime: 234,
-    thisWeekInteractions: 89,
-    voiceMinutesUsed: 45
+    totalInteractions: 0, // Will be populated from actual usage tracking
+    thisWeekInteractions: 0 // Will be populated from actual usage tracking
   };
   
   // Action handlers
@@ -241,9 +256,7 @@ export default function Dashboard() {
               <div className="grid grid-4 gap-4 md:gap-6">
                 {[
                   { label: 'Total Agents', value: stats.totalAgents, icon: Users, color: '#ff6b35' },
-                  { label: 'Active Agents', value: stats.activeAgents, icon: Zap, color: '#28a745' },
-                  { label: 'Total Interactions', value: stats.totalInteractions.toLocaleString(), icon: BarChart3, color: '#ff6b35' },
-                  { label: 'This Week', value: stats.thisWeekInteractions, icon: Calendar, color: '#17a2b8' }
+                  { label: 'Active Agents', value: stats.activeAgents, icon: Zap, color: '#28a745' }
                 ].map((stat, index) => (
                   <motion.div
                     key={stat.label}
@@ -616,9 +629,65 @@ export default function Dashboard() {
                 Analytics
               </h1>
               <div className="card-base p-8">
-                <p className="text-text-secondary dark:text-text-secondary-dark">
-                  Analytics dashboard coming soon...
-                </p>
+                {loadingUsage ? (
+                  <div className="flex justify-center py-8">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-orange-500"></div>
+                  </div>
+                ) : usageData ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                        <Clock className="w-5 h-5 text-blue-500" />
+                        Current Usage (This Month)
+                      </h3>
+                      <div className="space-y-3">
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-slate-600 dark:text-slate-400">AI Minutes</span>
+                            <span className="font-medium">{usageData.currentMonth?.aiMinutes || 0} / {usageData.limits?.aiMinutes || 100}</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-blue-500 rounded-full"
+                              style={{ width: `${Math.min(100, ((usageData.currentMonth?.aiMinutes || 0) / (usageData.limits?.aiMinutes || 100)) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span className="text-slate-600 dark:text-slate-400">Messages</span>
+                            <span className="font-medium">{usageData.currentMonth?.messages || 0} / {usageData.limits?.messages || 1000}</span>
+                          </div>
+                          <div className="h-2 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-green-500 rounded-full"
+                              style={{ width: `${Math.min(100, ((usageData.currentMonth?.messages || 0) / (usageData.limits?.messages || 1000)) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                        <CreditCard className="w-5 h-5 text-purple-500" />
+                        Estimated Cost
+                      </h3>
+                      <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700">
+                        <div className="text-3xl font-bold text-slate-900 dark:text-white">
+                          ${(usageData.currentMonth?.cost || 0).toFixed(2)}
+                        </div>
+                        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+                          Projected: ${(usageData.currentMonth?.cost * 1.2 || 0).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-text-secondary dark:text-text-secondary-dark">
+                    No usage data available yet.
+                  </p>
+                )}
               </div>
             </motion.div>
           )}

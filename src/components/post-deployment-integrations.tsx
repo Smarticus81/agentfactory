@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -74,15 +74,7 @@ export default function PostDeploymentIntegrations({
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
 
-  // Load integration status
-  useEffect(() => {
-    if (user && agentId) {
-      loadIntegrationStatus();
-      loadDocuments();
-    }
-  }, [user, agentId]);
-
-  const loadIntegrationStatus = async () => {
+  const loadIntegrationStatus = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -94,9 +86,9 @@ export default function PostDeploymentIntegrations({
     } catch (error) {
       console.error('Error loading integration status:', error);
     }
-  };
+  }, [user, agentId]);
 
-  const loadDocuments = async () => {
+  const loadDocuments = useCallback(async () => {
     if (!user) return;
 
     try {
@@ -110,7 +102,28 @@ export default function PostDeploymentIntegrations({
     } finally {
       setLoading(false);
     }
-  };
+  }, [user, agentId]);
+
+  // Load integration status
+  useEffect(() => {
+    if (user && agentId) {
+      loadIntegrationStatus();
+      loadDocuments();
+    }
+  }, [user, agentId, loadIntegrationStatus, loadDocuments]);
+
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data === 'gmail_oauth_success' || event.data?.type === 'GMAIL_AUTH_SUCCESS') {
+        loadIntegrationStatus();
+        setSuccess('Gmail connected successfully!');
+        setTimeout(() => setSuccess(null), 3000);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, [loadIntegrationStatus]);
 
   const handleGmailConnect = async () => {
     if (!user) return;
@@ -118,9 +131,26 @@ export default function PostDeploymentIntegrations({
     setConnectingGmail(true);
     setError(null);
 
+    // Open popup immediately to avoid blocker
+    const width = 600;
+    const height = 600;
+    const left = window.screen.width / 2 - width / 2;
+    const top = window.screen.height / 2 - height / 2;
+    const popup = window.open(
+      '',
+      'GmailAuth',
+      `width=${width},height=${height},left=${left},top=${top}`
+    );
+
+    if (!popup) {
+      setError('Popup blocked. Please allow popups for this site.');
+      setConnectingGmail(false);
+      return;
+    }
+
     try {
       // Initiate Gmail OAuth flow
-      const response = await fetch(`/api/gmail/auth?userId=${encodeURIComponent(user.id)}`, {
+      const response = await fetch(`/api/gmail/auth?userId=${user.id}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -130,12 +160,14 @@ export default function PostDeploymentIntegrations({
       const data = await response.json();
 
       if (response.ok && data.authUrl) {
-        // Redirect to Google OAuth
-        window.location.href = data.authUrl;
+        // Redirect popup to Google OAuth
+        popup.location.href = data.authUrl;
       } else {
+        popup.close();
         setError(data.error || 'Failed to initiate Gmail connection');
       }
     } catch (error) {
+      popup.close();
       setError('Network error. Please try again.');
     } finally {
       setConnectingGmail(false);
@@ -402,7 +434,7 @@ export default function PostDeploymentIntegrations({
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
                 <div className="space-y-2">
-                  <h4 className="font-medium text-gray-900 dark:text-white">What you'll get:</h4>
+                  <h4 className="font-medium text-gray-900 dark:text-white">What you&apos;ll get:</h4>
                   <ul className="space-y-1 text-gray-600 dark:text-gray-400">
                     <li>• Read and search emails by voice</li>
                     <li>• Send emails through voice commands</li>
@@ -412,9 +444,9 @@ export default function PostDeploymentIntegrations({
                 <div className="space-y-2">
                   <h4 className="font-medium text-gray-900 dark:text-white">Voice commands:</h4>
                   <ul className="space-y-1 text-gray-600 dark:text-gray-400">
-                    <li>• "Check my emails"</li>
-                    <li>• "Send email to John"</li>
-                    <li>• "Read unread messages"</li>
+                    <li>• &quot;Check my emails&quot;</li>
+                    <li>• &quot;Send email to John&quot;</li>
+                    <li>• &quot;Read unread messages&quot;</li>
                   </ul>
                 </div>
               </div>
@@ -442,7 +474,7 @@ export default function PostDeploymentIntegrations({
           <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-6 text-center hover:border-purple-400 dark:hover:border-purple-500 transition-colors">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <p className="text-gray-700 dark:text-gray-300 mb-4 font-medium">
-              Upload documents to enhance {agentName}'s knowledge
+              Upload documents to enhance {agentName}&apos;s knowledge
             </p>
             <div className="flex justify-center gap-4">
               <div className="flex-1 max-w-xs">

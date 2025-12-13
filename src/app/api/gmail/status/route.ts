@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
     const userId = authenticatedUserId;
 
     // Check authentication status
-    const isAuthenticated = await gmailService.isAuthenticated(userId);
+    const isAuthenticated = await gmailService.authenticateUser(userId);
     const userEmail = isAuthenticated ? await gmailService.getUserEmail(userId) : null;
 
     return NextResponse.json({

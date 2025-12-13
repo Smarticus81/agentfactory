@@ -201,47 +201,7 @@ export class UsageTracker {
     return agentEvents.length;
   }
 
-  // Generate mock interactions for demo purposes
-  generateMockInteractions(userId: string): void {
-    const agents = ['Family Assistant', 'Personal Admin', 'Study Buddy'];
-    const categories: UsageEvent['category'][] = ['voice_minutes', 'email_sends', 'rag_queries', 'web_searches', 'calendar_events'];
-    
-    // Generate some random usage data for the last 7 days
-    for (let i = 0; i < 20; i++) {
-      const daysAgo = Math.floor(Math.random() * 7);
-      const hoursAgo = Math.floor(Math.random() * 24);
-      const timestamp = new Date();
-      timestamp.setDate(timestamp.getDate() - daysAgo);
-      timestamp.setHours(timestamp.getHours() - hoursAgo);
-
-      const event: UsageEvent = {
-        userId,
-        category: categories[Math.floor(Math.random() * categories.length)],
-        amount: Math.floor(Math.random() * 5) + 1,
-        metadata: {
-          agentName: agents[Math.floor(Math.random() * agents.length)],
-          timestamp: timestamp.toISOString(),
-          type: 'mock_interaction'
-        }
-      };
-
-      this.events.push(event);
-    }
-  }
 }
 
 // Singleton instance
 export const usageTracker = UsageTracker.getInstance();
-
-// Helper function to initialize with mock data
-export const initializeMockUsage = (userId: string) => {
-  const tracker = UsageTracker.getInstance();
-  
-  // Only generate mock data if we don't have any existing data
-  const existingData = tracker.getUserUsage(userId);
-  const hasData = Object.values(existingData).some(value => value > 0);
-  
-  if (!hasData) {
-    tracker.generateMockInteractions(userId);
-  }
-};

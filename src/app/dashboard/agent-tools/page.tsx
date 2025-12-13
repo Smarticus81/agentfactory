@@ -62,44 +62,6 @@ const agentTools: Tool[] = [
     apiEndpoint: '/api/integrations/gmail',
     status: 'active'
   },
-  {
-    name: 'SMS Messaging',
-    description: 'Send and receive text messages via Twilio integration',
-    category: 'communication',
-    icon: <MessageSquare className="w-5 h-5" />,
-    capabilities: [
-      'Send SMS messages',
-      'Receive SMS notifications',
-      'Group messaging',
-      'Message scheduling',
-      'Delivery confirmations'
-    ],
-    voiceCommands: [
-      '"Text mom I\'ll be late"',
-      '"Send group message to family about dinner"',
-      '"Schedule reminder text for tomorrow"'
-    ],
-    status: 'coming-soon'
-  },
-  {
-    name: 'Voice Calls',
-    description: 'Make and receive voice calls through the agent',
-    category: 'communication',
-    icon: <Phone className="w-5 h-5" />,
-    capabilities: [
-      'Initiate voice calls',
-      'Answer incoming calls',
-      'Call routing and forwarding',
-      'Voicemail management',
-      'Conference calling'
-    ],
-    voiceCommands: [
-      '"Call John Smith"',
-      '"Answer the call"',
-      '"Forward calls to my mobile"'
-    ],
-    status: 'coming-soon'
-  },
 
   // Scheduling Tools
   {
@@ -181,7 +143,8 @@ const agentTools: Tool[] = [
       '"Search for latest news about AI"',
       '"What\'s the current stock price of Apple?"'
     ],
-    status: 'coming-soon'
+    apiEndpoint: '/api/integrations/web-search',
+    status: 'active'
   },
   {
     name: 'Knowledge Base',

@@ -75,7 +75,7 @@ export const AGENT_TOOL_CONFIG = {
   
   // Tool categories for UI display
   categories: {
-    communication: ['send_email', 'send_text_message', 'get_recent_emails', 'search_emails'],
+    communication: ['send_email', 'send_text_message', 'get_recent_emails', 'search_emails', 'connect_gmail'],
     scheduling: ['add_calendar_event', 'get_calendar_events', 'get_family_schedule'],
     knowledge: ['search_knowledge_base', 'web_search'],
     productivity: ['add_task', 'set_reminder'],
@@ -86,7 +86,8 @@ export const AGENT_TOOL_CONFIG = {
   // Default enabled tools for each assistant type
   defaultEnabledTools: {
     "Family Assistant": [
-      'send_email', 'add_calendar_event', 'get_calendar_events', 'search_knowledge_base',
+      'send_email', 'get_recent_emails', 'search_emails', 'add_calendar_event',
+      'get_calendar_events', 'search_knowledge_base',
       'set_reminder', 'add_task', 'get_family_schedule', 'get_weather', 'send_text_message'
     ],
     "Personal Admin": [
@@ -95,7 +96,8 @@ export const AGENT_TOOL_CONFIG = {
       'add_task', 'get_weather', 'get_news'
     ],
     "Student Helper": [
-      'send_email', 'add_calendar_event', 'get_calendar_events', 'search_knowledge_base',
+      'send_email', 'get_recent_emails', 'search_emails', 'add_calendar_event',
+      'get_calendar_events', 'search_knowledge_base',
       'web_search', 'set_reminder', 'add_task', 'get_weather'
     ],
     "Custom": VOICE_COMMAND_TOOLS.map(tool => tool.function.name)

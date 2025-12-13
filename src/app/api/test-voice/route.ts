@@ -9,8 +9,11 @@ export async function POST(request: NextRequest) {
     if (provider === 'openai') {
       console.log('OpenAI voice test requested');
       
+      // Use provided API key or fallback to server env var
+      const finalApiKey = apiKey || process.env.OPENAI_API_KEY;
+
       // Validate OpenAI API key
-      if (!apiKey || apiKey.length < 10) {
+      if (!finalApiKey || finalApiKey.length < 10) {
         return NextResponse.json({ 
           success: false, 
           error: 'Valid OpenAI API key is required',
@@ -25,7 +28,7 @@ export async function POST(request: NextRequest) {
         const openaiResponse = await fetch('https://api.openai.com/v1/audio/speech', {
           method: 'POST',
           headers: {
-            'Authorization': `Bearer ${apiKey}`,
+            'Authorization': `Bearer ${finalApiKey}`,
             'Content-Type': 'application/json'
           },
           body: JSON.stringify({
@@ -72,8 +75,11 @@ export async function POST(request: NextRequest) {
     if (provider === 'elevenlabs') {
       console.log('Eleven Labs voice test requested');
       
+      // Use provided API key or fallback to server env var
+      const finalApiKey = apiKey || process.env.ELEVENLABS_API_KEY;
+      
       // Validate ElevenLabs API key
-      if (!apiKey || apiKey.length < 10) {
+      if (!finalApiKey || finalApiKey.length < 10) {
         return NextResponse.json({ 
           success: false, 
           error: 'Valid ElevenLabs API key is required',
@@ -90,11 +96,11 @@ export async function POST(request: NextRequest) {
           headers: {
             'Accept': 'audio/mpeg',
             'Content-Type': 'application/json',
-            'xi-api-key': apiKey
+            'xi-api-key': finalApiKey
           },
           body: JSON.stringify({
             text,
-            model_id: 'eleven_monolingual_v1',
+            model_id: 'eleven_turbo_v2_5', // Use latest low-latency model
             voice_settings: {
               stability: 0.5,
               similarity_boost: 0.75
@@ -138,8 +144,11 @@ export async function POST(request: NextRequest) {
     if (provider === 'google') {
       console.log('Google Cloud voice test requested');
       
+      // Use provided API key or fallback to server env var
+      const finalApiKey = apiKey || process.env.GOOGLE_API_KEY || process.env.GOOGLE_CLOUD_API_KEY;
+
       // Validate Google API key
-      if (!apiKey || apiKey === 'AIzaSyBH8vQoQ9X1234567890abcdefghijklmnop' || apiKey.length < 10) {
+      if (!finalApiKey || finalApiKey === 'AIzaSyBH8vQoQ9X1234567890abcdefghijklmnop' || finalApiKey.length < 10) {
         return NextResponse.json({ 
           success: false, 
           error: 'Valid Google Cloud API key is required',
@@ -151,7 +160,7 @@ export async function POST(request: NextRequest) {
 
       try {
         // Call Google Cloud TTS API
-        const googleResponse = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${apiKey}`, {
+        const googleResponse = await fetch(`https://texttospeech.googleapis.com/v1/text:synthesize?key=${finalApiKey}`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json'
@@ -209,10 +218,13 @@ export async function POST(request: NextRequest) {
     
     if (provider === 'playht') {
       console.log('Play.ht voice test requested');
-      console.log('PlayHT params:', { apiKey: apiKey ? 'present' : 'missing', userId, voiceId, text });
+      const finalApiKey = apiKey || process.env.PLAYHT_API_KEY;
+      const finalUserId = userId || process.env.PLAYHT_USER_ID;
+
+      console.log('PlayHT params:', { apiKey: finalApiKey ? 'present' : 'missing', userId: finalUserId, voiceId, text });
       
       // Validate PlayHT API key
-      if (!apiKey || apiKey === 'placeholder_playht_key' || apiKey.length < 10) {
+      if (!finalApiKey || finalApiKey === 'placeholder_playht_key' || finalApiKey.length < 10) {
         return NextResponse.json({ 
           success: false, 
           error: 'Valid PlayHT API key is required',
@@ -236,8 +248,8 @@ export async function POST(request: NextRequest) {
         
         console.log('PlayHT request body:', requestBody);
         console.log('PlayHT headers:', {
-          'X-USER-ID': userId || process.env.NEXT_PUBLIC_PLAYHT_USER_ID || '',
-          'AUTHORIZATION': `Bearer ${apiKey.substring(0, 10)}...`
+          'X-USER-ID': finalUserId || '',
+          'AUTHORIZATION': `Bearer ${finalApiKey.substring(0, 10)}...`
         });
         console.log('PlayHT API endpoint:', 'https://api.play.ht/api/v2/tts/stream');
         
@@ -246,8 +258,8 @@ export async function POST(request: NextRequest) {
           headers: {
             'Accept': 'audio/mpeg',
             'Content-Type': 'application/json',
-            'X-USER-ID': userId || process.env.NEXT_PUBLIC_PLAYHT_USER_ID || '',
-            'AUTHORIZATION': `Bearer ${apiKey}`
+            'X-USER-ID': finalUserId || '',
+            'AUTHORIZATION': `Bearer ${finalApiKey}`
           },
           body: JSON.stringify(requestBody)
         });

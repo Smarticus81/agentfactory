@@ -1,4 +1,4 @@
-export type VoiceTier = 'starter' | 'pro' | 'premium';
+export type VoiceTier = 'starter' | 'pro' | 'premium' | 'elevenlabs';
 
 export interface VoicePipelineConfig {
   tier: VoiceTier;

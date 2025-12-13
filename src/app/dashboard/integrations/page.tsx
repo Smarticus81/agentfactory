@@ -1,13 +1,17 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useUser } from '@clerk/nextjs';
+import { useQuery } from 'convex/react';
+import { api } from '../../../../convex/_generated/api';
 import DashboardLayout from '@/components/dashboard-layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Zap, ExternalLink, Settings } from 'lucide-react';
+import { Zap, ExternalLink, Settings, ChevronDown } from 'lucide-react';
 import GmailOAuthSetup from '@/components/gmail-app-password-setup';
+import PostDeploymentIntegrations from '@/components/post-deployment-integrations';
 
 const integrations = {
   communication: [
@@ -97,279 +101,135 @@ const getStatusText = (status: string) => {
 };
 
 export default function IntegrationsPage() {
-  const [connectionStatus, setConnectionStatus] = useState<{[key: string]: string}>({});
-  const [showMessage, setShowMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
-  const [showGmailSetup, setShowGmailSetup] = useState(false);
+  const { user } = useUser();
+  const [selectedAgentId, setSelectedAgentId] = useState<string | null>(null);
+  const [showAgentSelector, setShowAgentSelector] = useState(false);
+  
+  // Fetch user's agents
+  const agents = useQuery(api.assistants.getUserAgents, 
+    user?.id ? { userId: user.id, includeArchived: false } : 'skip'
+  );
 
-  // Check URL parameters for OAuth results
+  // Set first agent as default
   useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const gmailConnected = urlParams.get('gmail_connected');
-    const error = urlParams.get('error');
-    const email = urlParams.get('email');
-
-    if (gmailConnected === 'true') {
-      setShowMessage({
-        type: 'success',
-        text: `Gmail connected successfully${email ? ` for ${decodeURIComponent(email)}` : ''}!`
-      });
-      setConnectionStatus(prev => ({ ...prev, gmail: 'connected' }));
-
-      // Clean up URL parameters
-      window.history.replaceState({}, '', '/dashboard/integrations');
-    } else if (error) {
-      let errorText = 'Failed to connect Gmail';
-
-      // Provide more specific error messages
-      switch (error) {
-        case 'access_denied':
-          errorText = 'Gmail connection was cancelled. Please try again and grant the necessary permissions.';
-          break;
-        case 'invalid_request':
-          errorText = 'Invalid OAuth request. Please check your Google OAuth configuration.';
-          break;
-        case 'unauthorized_client':
-          errorText = 'Unauthorized client. Please verify your Google OAuth app configuration.';
-          break;
-        case 'unsupported_response_type':
-          errorText = 'Unsupported response type. Please contact support.';
-          break;
-        case 'invalid_scope':
-          errorText = 'Invalid scope requested. Please contact support.';
-          break;
-        default:
-          errorText += `: ${decodeURIComponent(error)}`;
-      }
-
-      setShowMessage({
-        type: 'error',
-        text: errorText
-      });
-
-      // Clean up URL parameters
-      window.history.replaceState({}, '', '/dashboard/integrations');
+    if (agents && agents.length > 0 && !selectedAgentId) {
+      setSelectedAgentId(agents[0]._id);
     }
+  }, [agents, selectedAgentId]);
 
-    // Auto-hide messages after 5 seconds
-    if (gmailConnected || error) {
-      setTimeout(() => setShowMessage(null), 5000);
-    }
-  }, []);
-
-  const allIntegrations = [
-    ...integrations.communication,
-    ...integrations.scheduling,
-    ...integrations.knowledge
-  ];
-
-  const handleIntegrationAction = async (integration: any) => {
-    try {
-      if (integration.name === 'Gmail' && integration.status === 'available') {
-        // Show simple app password setup instead of OAuth
-        setShowGmailSetup(true);
-      } else {
-        // Handle other integrations or configuration
-        console.log('Integration action for:', integration.name);
-      }
-    } catch (error) {
-      console.error('Integration action failed:', error);
-      setShowMessage({
-        type: 'error',
-        text: 'Failed to connect integration'
-      });
-    }
-  };
-
-  const handleGmailConnectionSuccess = (email: string) => {
-    setConnectionStatus(prev => ({ ...prev, gmail: 'connected' }));
-    setShowMessage({
-      type: 'success',
-      text: `Gmail connected successfully for ${email}!`
-    });
-    setShowGmailSetup(false);
-    setTimeout(() => setShowMessage(null), 5000);
-  };
-
-  const renderIntegrationCard = (integration: any) => {
-    const currentStatus = connectionStatus[integration.name.toLowerCase()] || integration.status;
-    
+  const selectedAgent = agents?.find(a => a._id === selectedAgentId);
+  
+  if (!user) {
     return (
-    <div key={integration.name} className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-2xl p-6 border border-slate-200/60 dark:border-slate-700/60 hover:shadow-xl transition-all duration-300 group cursor-pointer">
-      <div className="flex items-start justify-between mb-4">
-        <div className="flex items-center space-x-4">
-          <div className={`p-3 rounded-xl bg-gradient-to-br ${integration.color} text-white shadow-lg`}>
-            {integration.logo}
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-64">
+          <p className="text-slate-600 dark:text-slate-400">Please sign in to manage integrations</p>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  if (!agents || agents.length === 0) {
+    return (
+      <DashboardLayout>
+        <div className="space-y-8">
+          <div className="space-y-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Zap className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                  Agent Integrations
+                </h1>
+                <p className="text-slate-600 dark:text-slate-400">
+                  No agents found
+                </p>
+              </div>
+            </div>
           </div>
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-              {integration.name}
-            </h3>
-            <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{integration.category}</p>
+          
+          <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-2xl p-8 border border-slate-200/60 dark:border-slate-700/60 text-center">
+            <p className="text-slate-600 dark:text-slate-400 mb-4">
+              Create an agent first before setting up integrations
+            </p>
+            <Button onClick={() => window.location.href = '/dashboard/agent-designer'}>
+              Create Your First Agent
+            </Button>
           </div>
         </div>
-        <Badge className={`${getStatusColor(currentStatus)} border font-medium px-3 py-1`}>
-          {getStatusText(currentStatus)}
-        </Badge>
-      </div>
-      
-      <p className="text-slate-600 dark:text-slate-400 mb-4 leading-relaxed">
-        {integration.description}
-      </p>
-      
-      <div className="flex justify-between items-center">
-        <Button 
-          variant="outline" 
-          size="sm"
-          className="bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-all duration-300"
-          onClick={() => handleIntegrationAction(integration)}
-        >
-          {integration.status === 'connected' ? 'Configure' : 'Connect'}
-        </Button>
-        {integration.website && (
-          <a 
-            href={integration.website}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 transition-colors flex items-center space-x-1"
-          >
-            <span>Learn more</span>
-            <ExternalLink className="w-3 h-3" />
-          </a>
-        )}
-      </div>
-    </div>
+      </DashboardLayout>
     );
-  };
+  }
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        {/* Clean Header */}
+        {/* Header with Agent Selector */}
         <div className="space-y-4">
-          <div className="flex items-center space-x-3">
-            <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
-              <Zap className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
-                Agent Integrations
-              </h1>
-              <p className="text-slate-600 dark:text-slate-400">
-                Connect your voice agents to essential services and tools
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Success/Error Messages */}
-        {showMessage && (
-          <div className={`p-4 rounded-lg border ${showMessage.type === 'success' 
-            ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400' 
-            : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-400'
-          }`}>
-            <div className="flex items-center justify-between">
-              <span>{showMessage.text}</span>
-              <button 
-                onClick={() => setShowMessage(null)}
-                className="text-sm underline hover:no-underline"
-              >
-                Dismiss
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Integration Categories */}
-        <Tabs defaultValue="all" className="space-y-8">
-          <TabsList className="bg-slate-100 dark:bg-slate-800 p-1 rounded-xl border border-slate-200 dark:border-slate-700">
-            <TabsTrigger value="all" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white text-slate-600 dark:text-slate-400 px-6 py-3 rounded-lg font-medium transition-all">
-              All Integrations
-            </TabsTrigger>
-            <TabsTrigger value="communication" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white text-slate-600 dark:text-slate-400 px-6 py-3 rounded-lg font-medium transition-all">
-              Communication
-            </TabsTrigger>
-            <TabsTrigger value="scheduling" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white text-slate-600 dark:text-slate-400 px-6 py-3 rounded-lg font-medium transition-all">
-              Scheduling
-            </TabsTrigger>
-            <TabsTrigger value="knowledge" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:text-slate-900 dark:data-[state=active]:text-white text-slate-600 dark:text-slate-400 px-6 py-3 rounded-lg font-medium transition-all">
-              Knowledge
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="all" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {allIntegrations.map(renderIntegrationCard)}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="communication" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {integrations.communication.map(renderIntegrationCard)}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="scheduling" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {integrations.scheduling.map(renderIntegrationCard)}
-            </div>
-          </TabsContent>
-
-          <TabsContent value="knowledge" className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {integrations.knowledge.map(renderIntegrationCard)}
-            </div>
-          </TabsContent>
-        </Tabs>
-
-        {/* Gmail App Password Setup Modal */}
-        {showGmailSetup && (
-          <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-            <div className="max-w-md w-full">
-              <div className="mb-4 flex justify-end">
-                <Button
-                  variant="ghost"
-                  onClick={() => setShowGmailSetup(false)}
-                  className="text-white hover:text-gray-300"
-                >
-                  ✕ Close
-                </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <div className="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl flex items-center justify-center shadow-lg">
+                <Zap className="w-6 h-6 text-white" />
               </div>
-              <GmailOAuthSetup onConnectionSuccess={handleGmailConnectionSuccess} />
+              <div>
+                <h1 className="text-3xl font-bold text-slate-900 dark:text-white">
+                  Agent Integrations
+                </h1>
+                <p className="text-slate-600 dark:text-slate-400">
+                  Connect services for {selectedAgent?.name || 'your agent'}
+                </p>
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* Benefits Section */}
-        <div className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-xl rounded-2xl p-8 border border-slate-200/60 dark:border-slate-700/60">
-          <h3 className="text-2xl font-semibold text-slate-900 dark:text-white mb-6 flex items-center space-x-3">
-            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-lg flex items-center justify-center">
-              <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <span>Why Integrate?</span>
-          </h3>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="space-y-3">
-              <div className="text-blue-600 dark:text-blue-400 font-semibold">🚀 Streamlined Operations</div>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-                Connect your existing tools to create seamless workflows and eliminate manual data entry.
-              </p>
-            </div>
-            <div className="space-y-3">
-              <div className="text-purple-600 dark:text-purple-400 font-semibold">⚡ Enhanced Automation</div>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-                Automate repetitive tasks and focus on what matters most - serving your customers.
-              </p>
-            </div>
-            <div className="space-y-3">
-              <div className="text-emerald-600 dark:text-emerald-400 font-semibold">📊 Better Insights</div>
-              <p className="text-slate-600 dark:text-slate-400 text-sm leading-relaxed">
-                Get comprehensive analytics and reporting across all your integrated platforms.
-              </p>
+            
+            {/* Agent Selector */}
+            <div className="relative">
+              <Button
+                variant="outline"
+                onClick={() => setShowAgentSelector(!showAgentSelector)}
+                className="flex items-center space-x-2"
+              >
+                <span>{selectedAgent?.name || 'Select Agent'}</span>
+                <ChevronDown className="w-4 h-4" />
+              </Button>
+              
+              {showAgentSelector && (
+                <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 z-50">
+                  <div className="p-2 space-y-1">
+                    {agents?.map((agent) => (
+                      <button
+                        key={agent._id}
+                        onClick={() => {
+                          setSelectedAgentId(agent._id);
+                          setShowAgentSelector(false);
+                        }}
+                        className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                          selectedAgentId === agent._id
+                            ? 'bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                            : 'hover:bg-slate-50 dark:hover:bg-slate-700'
+                        }`}
+                      >
+                        <div className="font-medium">{agent.name}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{agent.type}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
+
+        {/* Integration Content */}
+        {selectedAgentId && (
+          <PostDeploymentIntegrations
+            agentId={selectedAgentId}
+            agentName={selectedAgent?.name || 'Agent'}
+            onIntegrationUpdate={() => {
+              console.log('Integration updated');
+            }}
+          />
+        )}
       </div>
     </DashboardLayout>
   );
