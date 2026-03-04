@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../convex/_generated/api';
 
-// Initialize Convex client
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+function getConvex() {
+  return new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Fetch agents from Convex using the getByOwner function
-    const agents = await convex.query(api.assistants.getByOwner, { ownerId: userId });
+    const agents = await getConvex().query(api.assistants.getByOwner, { ownerId: userId });
     
     return NextResponse.json({
       success: true,
@@ -63,7 +64,7 @@ export async function POST(request: NextRequest) {
     const finalInstructions = instructions || customInstructions || `You are ${name}, a helpful AI assistant.`;
 
     // Create agent using Convex create function
-    const result = await convex.mutation(api.assistants.create, {
+    const result = await getConvex().mutation(api.assistants.create, {
       userId,
       name,
       type: type || 'assistant',
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Fetch the created agent to return complete data
-    const createdAgent = await convex.query(api.assistants.get, { 
+    const createdAgent = await getConvex().query(api.assistants.get, { 
       assistantId: result.assistantId 
     });
 

@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 
-// Initialize Convex client
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+function getConvex() {
+  return new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update the assistant with deployment information
-    await convex.mutation(api.assistants.update, {
+    await getConvex().mutation(api.assistants.update, {
       assistantId: agentId,
       updates: {
         isDeployed: true,
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Create a deployment record
-    await convex.mutation(api.deployments.create, {
+    await getConvex().mutation(api.deployments.create, {
       assistantId: agentId,
       userId: deploymentInfo.userId || '', // User ID should be provided
       name: deploymentInfo.agentName || 'Voice Agent',

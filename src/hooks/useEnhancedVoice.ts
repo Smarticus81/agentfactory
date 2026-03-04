@@ -5,8 +5,7 @@ import { WakeWordDetector } from '@/lib/wake-word-detector';
 import { VoicePipelineManager } from '@/lib/voice-pipeline-manager';
 import { Voice } from '@/lib/voice-providers';
 import { OpenAIRealtimeClient } from '@/lib/openai-realtime-client';
-import { openGmailOAuthWindow, executeVoiceCommand } from '@/lib/voice-command-tools';
-import { VOICE_COMMAND_TOOLS } from '@/lib/voice-command-tools';
+import { executeVoiceCommand, VOICE_COMMAND_TOOLS } from '@/lib/voice-command-tools';
 
 // Global singleton to prevent multiple OpenAI instances
 let globalOpenAIClient: OpenAIRealtimeClient | null = null;
@@ -407,8 +406,8 @@ export function useEnhancedVoice(): UseEnhancedVoiceReturn {
           };
 
           if (!status.authenticated) {
-            setResponse('Opening Gmail authorization. Please complete the popup...');
-            const ok = await openGmailOAuthWindow(userId);
+            setResponse('Integration not configured. Please set up from the dashboard.');
+            const ok = false; // Gmail OAuth removed for venue agents
             if (ok) {
               setResponse('Gmail connected. Verifying connection...');
 

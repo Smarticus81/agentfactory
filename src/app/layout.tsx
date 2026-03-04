@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { ClerkProvider } from "@clerk/nextjs";
 import ConvexClientProvider from "@/components/convex-client-provider";
 import { ThemeProvider } from "@/components/theme-provider";
-
-const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Bevpro Studio - Where Your Event Venue Finds Its Voice",
@@ -69,7 +66,7 @@ export default function RootLayout({
           <link rel="mask-icon" href="/smarticus-logo.svg" color="#3B82F6" />
           <link rel="shortcut icon" href="/smarticus-logo.svg" />
         </head>
-        <body className={inter.className}>
+        <body className="font-sans">
           <ConvexClientProvider>
             <ThemeProvider defaultTheme="system" storageKey="bevpro-studio-theme">
               <div className="min-h-screen bg-background text-foreground transition-colors duration-300">

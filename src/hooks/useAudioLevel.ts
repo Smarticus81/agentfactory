@@ -42,7 +42,7 @@ export const useAudioLevel = () => {
 
         const getAudioLevel = () => {
           if (analyserRef.current && dataArrayRef.current) {
-            analyserRef.current.getByteFrequencyData(dataArrayRef.current);
+            analyserRef.current.getByteFrequencyData(dataArrayRef.current as Uint8Array<ArrayBuffer>);
             const average = dataArrayRef.current.reduce((sum, value) => sum + value, 0) / bufferLength;
             setAudioLevel(average / 128); // Normalize to 0-2 range
           }

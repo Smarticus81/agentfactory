@@ -100,7 +100,7 @@ export default function Dashboard() {
   
   // Action handlers
   const handleArchive = (agentId: string) => {
-    const agent = agents?.find(a => a._id === agentId);
+    const agent = agents?.find((a: any) => a._id === agentId);
     if (!agent) return;
     
     setConfirmDialog({
@@ -113,7 +113,7 @@ export default function Dashboard() {
   };
   
   const handleUnarchive = (agentId: string) => {
-    const agent = agents?.find(a => a._id === agentId);
+    const agent = agents?.find((a: any) => a._id === agentId);
     if (!agent) return;
     
     setConfirmDialog({
@@ -126,7 +126,7 @@ export default function Dashboard() {
   };
   
   const handleDelete = (agentId: string) => {
-    const agent = agents?.find(a => a._id === agentId);
+    const agent = agents?.find((a: any) => a._id === agentId);
     if (!agent) return;
     
     setConfirmDialog({
@@ -213,7 +213,7 @@ export default function Dashboard() {
             Dashboard
           </h1>
           <p className="body-lg" style={{ fontFamily: 'Inter, sans-serif' }}>
-            Overview of your AI assistants and platform usage
+            Overview of your venue voice agents and platform usage
           </p>
         </div>
 
@@ -313,7 +313,7 @@ export default function Dashboard() {
                             Create Agent
                           </h3>
                           <p className="body-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
-                            Build a new voice assistant
+                            Build a new venue voice agent
                           </p>
                         </div>
                       </div>
@@ -335,7 +335,7 @@ export default function Dashboard() {
                             Deployments
                           </h3>
                           <p className="body-sm" style={{ fontFamily: 'Inter, sans-serif' }}>
-                            Manage live agents
+                            Manage live venue agents
                           </p>
                         </div>
                       </div>
@@ -373,44 +373,44 @@ export default function Dashboard() {
                 </h2>
                 <div className="space-y-4">
                   {[
-                    { 
-                      action: 'Voice Interaction', 
-                      agent: 'Family Assistant', 
-                      time: new Date(Date.now() - 120000).toLocaleString(), 
+                    {
+                      action: 'Tab Opened',
+                      agent: 'The Tavern Agent',
+                      time: new Date(Date.now() - 120000).toLocaleString(),
                       status: 'success',
-                      details: '5 minutes conversation',
+                      details: 'New tab for Sarah - Table 5',
                       interactions: 3
                     },
-                    { 
-                      action: 'Email Sent', 
-                      agent: 'Personal Admin', 
-                      time: new Date(Date.now() - 3600000).toLocaleString(), 
+                    {
+                      action: 'Order Placed',
+                      agent: 'Rooftop Bar Bot',
+                      time: new Date(Date.now() - 3600000).toLocaleString(),
                       status: 'info',
-                      details: 'Meeting reminder to John',
+                      details: '2x Old Fashioned, 1x Moscow Mule',
                       interactions: 1
                     },
-                    { 
-                      action: 'RAG Query', 
-                      agent: 'Study Buddy', 
-                      time: new Date(Date.now() - 10800000).toLocaleString(), 
+                    {
+                      action: 'Tab Closed',
+                      agent: 'The Tavern Agent',
+                      time: new Date(Date.now() - 10800000).toLocaleString(),
                       status: 'success',
-                      details: 'Document analysis completed',
+                      details: '$87.50 - Credit card payment',
                       interactions: 2
                     },
-                    { 
-                      action: 'Calendar Event', 
-                      agent: 'Family Assistant', 
-                      time: new Date(Date.now() - 21600000).toLocaleString(), 
+                    {
+                      action: 'Menu Query',
+                      agent: 'Event Center Voice',
+                      time: new Date(Date.now() - 21600000).toLocaleString(),
                       status: 'success',
-                      details: 'Added soccer practice',
+                      details: 'Checked draft beer availability',
                       interactions: 1
                     },
-                    { 
-                      action: 'Web Search', 
-                      agent: 'Personal Admin', 
-                      time: new Date(Date.now() - 28800000).toLocaleString(), 
+                    {
+                      action: 'Sales Report',
+                      agent: 'Rooftop Bar Bot',
+                      time: new Date(Date.now() - 28800000).toLocaleString(),
                       status: 'info',
-                      details: 'Weather forecast lookup',
+                      details: 'Daily sales summary requested',
                       interactions: 1
                     }
                   ].map((activity, index) => (
@@ -602,13 +602,13 @@ export default function Dashboard() {
                   <p className="text-text-secondary dark:text-text-secondary-dark mb-6">
                     {showArchived 
                       ? 'You don\'t have any archived agents. Archive agents to hide them from the main view.'
-                      : 'Get started by creating your first voice agent.'
+                      : 'Get started by creating your first venue voice agent.'
                     }
                   </p>
                   {!showArchived && (
                     <Link href="/dashboard/agent-designer">
                       <button className="btn-primary">
-                        Create Your First Agent
+                        Create Your First Venue Agent
                       </button>
                     </Link>
                   )}

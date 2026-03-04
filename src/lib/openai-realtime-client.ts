@@ -1,4 +1,10 @@
-import { RealtimeAgent, RealtimeSession, OpenAIRealtimeWebRTC } from '@openai/agents/realtime';
+/* eslint-disable */
+// OpenAI Realtime stubs (legacy - venue agents use LiveKit voice pipeline)
+const _Stub: any = class { constructor(..._args: any[]) {} };
+const RealtimeAgent = _Stub;
+const RealtimeSession = _Stub;
+const OpenAIRealtimeWebRTC = _Stub;
+
 import { EventEmitter } from 'events';
 
 
@@ -20,9 +26,9 @@ export interface AudioConfig {
 }
 
 export class OpenAIRealtimeClient extends EventEmitter {
-  private agent: RealtimeAgent | null = null;
-  private session: RealtimeSession | null = null;
-  private transport: OpenAIRealtimeWebRTC | null = null;
+  private agent: any = null;
+  private session: any = null;
+  private transport: any = null;
   private mediaStream: MediaStream | null = null;
   private audioElement: HTMLAudioElement | null = null;
   private connected = false;

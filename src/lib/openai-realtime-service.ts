@@ -145,24 +145,26 @@ export class OpenAIRealtimeService {
   // Calculate STT accuracy based on tier
   private calculateSTTAccuracy(tier: VoiceTier): number {
     const baseAccuracy = 0.85; // Base accuracy for starter tier
-    const tierMultipliers = {
+    const tierMultipliers: Record<VoiceTier, number> = {
       starter: 1.0,
       pro: 1.05,
-      premium: 1.1
+      premium: 1.1,
+      elevenlabs: 1.12
     };
-    
+
     return Math.min(0.98, baseAccuracy * tierMultipliers[tier]);
   }
 
   // Calculate TTS quality based on tier
   private calculateTTSQuality(tier: VoiceTier): number {
     const baseQuality = 0.80; // Base quality for starter tier
-    const tierMultipliers = {
+    const tierMultipliers: Record<VoiceTier, number> = {
       starter: 1.0,
       pro: 1.08,
-      premium: 1.15
+      premium: 1.15,
+      elevenlabs: 1.18
     };
-    
+
     return Math.min(0.99, baseQuality * tierMultipliers[tier]);
   }
 

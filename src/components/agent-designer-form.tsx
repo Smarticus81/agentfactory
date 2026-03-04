@@ -2,15 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Plus, Users, Calendar, BookOpen, ArrowRight, CheckCircle, 
-  Cloud, Database, Mail, FileText, Camera, Upload, Download,
-  CloudCog, Server, Globe, Lock, Smartphone
+import {
+  Plus, ArrowRight, CheckCircle,
+  Smartphone, UtensilsCrossed, Wine, Music, Building2
 } from 'lucide-react';
 
 interface AssistantConfig {
   name: string;
-  type: 'Family Assistant' | 'Personal Admin' | 'Student Helper' | 'Custom';
+  type: 'Restaurant' | 'Bar & Lounge' | 'Nightclub' | 'Event Venue' | 'Custom';
   description: string;
   instructions: string;
   voiceConfig: {
@@ -23,11 +22,6 @@ interface AssistantConfig {
   features: string[];
   capabilities: string[];
   useCase: string;
-  integrations?: {
-    email?: boolean;
-    cloudDatabases?: string[];
-    documentUpload?: boolean;
-  };
 }
 
 interface AgentDesignerFormProps {
@@ -39,32 +33,39 @@ interface AgentDesignerFormProps {
 
 const assistantTypes = [
   {
-    id: 'Family Assistant',
-    name: 'Family Assistant',
-    description: 'Busy families managing schedules',
-    icon: Users,
-    features: ['Family calendar', 'School events', 'Meal planning']
+    id: 'Restaurant',
+    name: 'Restaurant',
+    description: 'Full-service dining venues',
+    icon: UtensilsCrossed,
+    features: ['Table management', 'Menu & orders', 'Tab management']
   },
   {
-    id: 'Personal Admin',
-    name: 'Personal Admin',
-    description: 'Individual productivity',
-    icon: Calendar,
-    features: ['Email management', 'Task organization', 'Calendar optimization']
+    id: 'Bar & Lounge',
+    name: 'Bar & Lounge',
+    description: 'Bars, pubs, and lounges',
+    icon: Wine,
+    features: ['Drink orders', 'Tab management', 'Quick service']
   },
   {
-    id: 'Student Helper',
-    name: 'Student Helper',
-    description: 'Academic organization',
-    icon: BookOpen,
-    features: ['Homework tracking', 'Study schedules', 'Research help']
+    id: 'Nightclub',
+    name: 'Nightclub',
+    description: 'Clubs and late-night venues',
+    icon: Music,
+    features: ['Bottle service', 'VIP tabs', 'High-volume orders']
+  },
+  {
+    id: 'Event Venue',
+    name: 'Event Venue',
+    description: 'Event spaces and arenas',
+    icon: Building2,
+    features: ['Concessions', 'Event pricing', 'Bulk orders']
   },
   {
     id: 'Custom',
-    name: 'Custom Assistant',
-    description: 'Build specialized assistant',
+    name: 'Custom Venue',
+    description: 'Build for any venue type',
     icon: Plus,
-    features: ['Custom capabilities', 'Tailored responses']
+    features: ['Custom tools', 'Flexible configuration']
   }
 ];
 
@@ -104,19 +105,19 @@ const getVoiceOptions = (provider: string) => {
 };
 
 const descriptionOptions = [
-  'Helps families stay organized and connected',
-  'Manages personal tasks and productivity',
-  'Supports academic success and learning',
-  'Provides specialized assistance for unique needs',
-  'Coordinates team activities and schedules',
-  'Manages business operations efficiently'
+  'Voice-powered POS assistant for managing tabs and orders',
+  'Hands-free bartender assistant for fast drink service',
+  'Voice ordering system for high-volume venue operations',
+  'Staff assistant for menu lookups and payment processing',
+  'Concession and bar management for events',
+  'Custom venue voice agent for specialized operations'
 ];
 
 export default function AgentDesignerForm({ initialData, onSave, isSaving, isEditing = false }: AgentDesignerFormProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [assistantConfig, setAssistantConfig] = useState<AssistantConfig>({
     name: initialData?.name || '',
-    type: initialData?.type || 'Family Assistant',
+    type: initialData?.type || 'Restaurant',
     description: initialData?.description || '',
     instructions: initialData?.customInstructions || '',
     features: [],
@@ -128,8 +129,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
       wakeWords: initialData?.wakeWord ? [initialData.wakeWord] : ['hey assistant'],
       temperature: initialData?.voiceConfig?.temperature || 0.7,
       enableTools: initialData?.voiceConfig?.enableTools ?? true
-    },
-    integrations: {}
+    }
   });
 
   const canProceed = () => {
@@ -186,8 +186,8 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
             className="space-y-6"
           >
           <div className="text-center mb-8">
-            <h2 className="text-h2 font-bold text-text-primary mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>Choose Assistant Type</h2>
-            <p className="text-text-secondary" style={{ fontFamily: 'Inter, sans-serif' }}>Select the type that best fits your needs</p>
+            <h2 className="text-h2 font-bold text-text-primary mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>Choose Venue Type</h2>
+            <p className="text-text-secondary" style={{ fontFamily: 'Inter, sans-serif' }}>Select the venue type for your voice agent</p>
           </div>            <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-5xl mx-auto">
               {assistantTypes.map((type) => (
                 <motion.div
@@ -204,14 +204,16 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                   <div className="flex items-center justify-between mb-4">
                     <div className={`p-3 rounded-xl shadow-lg text-white transition-all duration-300 ${
                       assistantConfig.type === type.id
-                        ? 'bg-gradient-to-br from-orange-500 to-orange-600 scale-110'
-                        : type.id === 'Family Assistant'
-                          ? 'bg-gradient-to-br from-blue-500 to-blue-600'
-                          : type.id === 'Personal Admin'
-                            ? 'bg-gradient-to-br from-emerald-500 to-emerald-600'
-                            : type.id === 'Student Helper'
-                              ? 'bg-gradient-to-br from-purple-500 to-purple-600'
-                              : 'bg-gradient-to-br from-slate-500 to-slate-600'
+                        ? 'bg-gradient-to-br from-violet-500 to-indigo-600 scale-110'
+                        : type.id === 'Restaurant'
+                          ? 'bg-gradient-to-br from-amber-500 to-orange-600'
+                          : type.id === 'Bar & Lounge'
+                            ? 'bg-gradient-to-br from-emerald-500 to-teal-600'
+                            : type.id === 'Nightclub'
+                              ? 'bg-gradient-to-br from-purple-500 to-pink-600'
+                              : type.id === 'Event Venue'
+                                ? 'bg-gradient-to-br from-blue-500 to-cyan-600'
+                                : 'bg-gradient-to-br from-slate-500 to-slate-600'
                     }`}>
                       <type.icon className="w-6 h-6" />
                     </div>
@@ -269,8 +271,8 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
             className="space-y-6"
           >
             <div className="text-center mb-8">
-              <h2 className="text-h2 font-bold text-text-primary mb-2">Assistant Details</h2>
-              <p className="text-text-secondary">Give your assistant a name and description</p>
+              <h2 className="text-h2 font-bold text-text-primary mb-2">Venue Agent Details</h2>
+              <p className="text-text-secondary">Name your venue agent and describe its role</p>
             </div>
 
             <div className="max-w-2xl mx-auto space-y-6">
@@ -282,7 +284,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                   type="text"
                   value={assistantConfig.name}
                   onChange={(e) => setAssistantConfig(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Family Helper, Study Buddy, Work Assistant"
+                  placeholder="e.g., The Tavern Assistant, Bar Bot, Venue Voice"
                   className="w-full px-4 py-3 border border-hairline rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
               </div>
@@ -319,7 +321,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
                 <textarea
                   value={assistantConfig.instructions}
                   onChange={(e) => setAssistantConfig(prev => ({ ...prev, instructions: e.target.value }))}
-                  placeholder="Specific instructions for how your assistant should behave..."
+                  placeholder="Specific instructions for your venue agent (e.g., menu style, tone, payment rules)..."
                   rows={4}
                   className="w-full px-4 py-3 border border-hairline rounded-lg focus:ring-2 focus:ring-accent focus:border-transparent"
                 />
@@ -460,7 +462,7 @@ export default function AgentDesignerForm({ initialData, onSave, isSaving, isEdi
               
               <div className="card-base p-6 bg-blue-50 dark:bg-blue-900/20">
                 <p className="text-sm text-text-secondary dark:text-text-secondary-dark">
-                  After creating your agent, you can connect integrations like Gmail, Calendar, and upload documents from the Integrations page.
+                  After creating your venue agent, you can connect your POS database and configure menu items from the Integrations page.
                 </p>
               </div>
             </div>

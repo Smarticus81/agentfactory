@@ -117,7 +117,7 @@ export default function IntegrationsPage() {
     }
   }, [agents, selectedAgentId]);
 
-  const selectedAgent = agents?.find(a => a._id === selectedAgentId);
+  const selectedAgent = agents?.find((a: any) => a._id === selectedAgentId);
   
   if (!user) {
     return (
@@ -196,7 +196,7 @@ export default function IntegrationsPage() {
               {showAgentSelector && (
                 <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-slate-200 dark:border-slate-700 z-50">
                   <div className="p-2 space-y-1">
-                    {agents?.map((agent) => (
+                    {agents?.map((agent: any) => (
                       <button
                         key={agent._id}
                         onClick={() => {

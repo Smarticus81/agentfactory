@@ -3,9 +3,11 @@ import OpenAI from 'openai';
 import { convex } from '@/lib/convex';
 import { api } from '../../../../convex/_generated/api';
 
-const openai = new OpenAI({
-  apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
-});
+function getOpenAI() {
+  return new OpenAI({
+    apiKey: process.env.NEXT_PUBLIC_OPENAI_API_KEY || process.env.OPENAI_API_KEY,
+  });
+}
 
 // Define available tools for agents
 const availableTools = [
@@ -116,7 +118,7 @@ export async function POST(request: NextRequest) {
       requestParams.tool_choice = "auto";
     }
 
-    const completion = await openai.chat.completions.create(requestParams);
+    const completion = await getOpenAI().chat.completions.create(requestParams);
 
     const responseMessage = completion.choices[0]?.message;
     
@@ -170,7 +172,7 @@ export async function POST(request: NextRequest) {
       }
       
       // Get final response with tool results
-      const finalCompletion = await openai.chat.completions.create({
+      const finalCompletion = await getOpenAI().chat.completions.create({
         model: 'gpt-4o-mini',  // Using latest GPT-4o-mini consistently
         messages: [
           ...messages,

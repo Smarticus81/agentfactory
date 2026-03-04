@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../convex/_generated/api';
 
-// Initialize Convex client
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+function getConvex() {
+  return new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
     }
     
     // Fetch usage data from Convex using the getUserUsage function
-    const usageData = await convex.query(api.assistants.getUserUsage, { userId });
+    const usageData = await getConvex().query(api.assistants.getUserUsage, { userId });
     
     if (!usageData) {
       // Return default empty data if no usage found

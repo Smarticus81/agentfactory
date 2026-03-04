@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from 'convex/browser';
 import { api } from '../../../../../convex/_generated/api';
 
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+function getConvex() {
+  return new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -15,20 +17,20 @@ export async function GET(request: NextRequest) {
     }
 
     // Get Gmail connection status
-    const gmailTokens = await convex.query(api.connections.getGmailTokens, {
+    const gmailTokens = await getConvex().query(api.connections.getGmailTokens, {
       userId: userId
     });
 
     // Get documents for this agent
-    const documents = await convex.query(api.knowledge.getByAgent, {
+    const documents = await getConvex().query(api.knowledge.getByAgent, {
       agentId: agentId || '',
       userId: userId
     });
 
     // Calculate document stats
-    const totalSize = documents.reduce((sum, doc) => sum + (doc.metadata?.size || 0), 0);
-    const readyCount = documents.filter(doc => doc.hasEmbeddings).length;
-    const processingCount = documents.filter(doc => !doc.hasEmbeddings && doc.status !== 'error').length;
+    const totalSize = documents.reduce((sum: number, doc: any) => sum + (doc.metadata?.size || 0), 0);
+    const readyCount = documents.filter((doc: any) => doc.hasEmbeddings).length;
+    const processingCount = documents.filter((doc: any) => !doc.hasEmbeddings && doc.status !== 'error').length;
 
     const integrationStatus = {
       gmail: {

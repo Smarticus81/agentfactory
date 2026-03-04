@@ -33,7 +33,7 @@ export default function AssistantDesigner() {
         userId: user?.id || '',
         name: assistantConfig.name.trim(),
         type: assistantConfig.type,
-        description: assistantConfig.description.trim() || `A ${assistantConfig.type} to help with your needs`,
+        description: assistantConfig.description.trim() || `Voice agent for ${assistantConfig.type} venue`,
         customInstructions: assistantConfig.instructions.trim() || undefined,
         voiceEnabled: true,
         wakeWord: assistantConfig.voiceConfig.wakeWords[0] || 'hey assistant',
@@ -87,10 +87,10 @@ export default function AssistantDesigner() {
           </Link>
           
           <h1 className="text-h1 font-bold text-text-primary dark:text-text-primary-dark mb-2" style={{ fontFamily: 'Inter, sans-serif' }}>
-            Create New Assistant
+            Create Venue Agent
           </h1>
           <p className="text-body text-text-secondary dark:text-text-secondary-dark" style={{ fontFamily: 'Inter, sans-serif' }}>
-            Design your personal AI helper with minimalist interface
+            Design a voice-powered POS agent for your venue
           </p>
         </div>
 

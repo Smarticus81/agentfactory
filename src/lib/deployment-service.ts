@@ -1,15 +1,22 @@
-import type { AppConfig } from './bevone/config';
-
 export interface DeploymentResult {
   success: boolean;
   url?: string;
   deploymentId?: string;
   error?: string;
-  platform: 'fly' | 'vercel' | 'render';
+  platform: string;
+  tier?: string;
+  [key: string]: any;
 }
 
 export interface VercelDeploymentConfig {
-  appConfig: AppConfig;
+  agentId?: string;
+  agentName?: string;
+  platform?: string;
+  tier?: string;
+  deploymentType?: string;
+  pwaConfig?: any;
+  voiceConfig?: any;
+  appConfig?: any;
   region?: string;
 }
 
@@ -27,10 +34,24 @@ export class DeploymentService {
   async deployToVercel(config: VercelDeploymentConfig): Promise<DeploymentResult> {
     try {
       if (!this.vercelToken) {
-        throw new Error('Vercel token not configured');
+        throw new Error('Vercel token not configured. Set VERCEL_TOKEN in environment.');
       }
 
-      const deploymentId = `bevone-${config.appConfig.id}-${Date.now()}`;
+      const deploymentId = config.agentId
+        ? `venue-${config.agentId}-${Date.now()}`
+        : `venue-${Date.now()}`;
+
+      const envVars: Record<string, string> = {
+        LIVEKIT_URL: process.env.LIVEKIT_URL || '',
+        LIVEKIT_API_KEY: process.env.LIVEKIT_API_KEY || '',
+        LIVEKIT_API_SECRET: process.env.LIVEKIT_API_SECRET || '',
+        OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
+        DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY || '',
+      };
+
+      if (config.appConfig) {
+        envVars.APP_CONFIG = JSON.stringify(config.appConfig);
+      }
 
       const response = await fetch('https://api.vercel.com/v13/deployments', {
         method: 'POST',
@@ -48,14 +69,7 @@ export class DeploymentService {
             repoId: process.env.GITHUB_REPO_ID,
             ref: 'main',
           },
-          env: {
-            APP_CONFIG: JSON.stringify(config.appConfig),
-            LIVEKIT_URL: process.env.LIVEKIT_URL || '',
-            LIVEKIT_API_KEY: process.env.LIVEKIT_API_KEY || '',
-            LIVEKIT_API_SECRET: process.env.LIVEKIT_API_SECRET || '',
-            OPENAI_API_KEY: process.env.OPENAI_API_KEY || '',
-            DEEPGRAM_API_KEY: process.env.DEEPGRAM_API_KEY || '',
-          },
+          env: envVars,
         }),
       });
 
