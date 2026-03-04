@@ -1,61 +1,23 @@
-# FamilyAI Studio - Production Dockerfile for Render
-FROM node:18-alpine AS base
+FROM node:22-alpine
 
-# Install pnpm
-RUN npm install -g pnpm
-
-# Dependencies stage
-FROM base AS deps
 WORKDIR /app
 
-# Copy package files
+# Build deps
+RUN apk add --no-cache python3 make g++ curl
+
+# Install deps
 COPY package.json pnpm-lock.yaml ./
+RUN npm install -g pnpm && pnpm install --frozen-lockfile
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile --prod=false
-
-# Builder stage
-FROM base AS builder
-WORKDIR /app
-
-# Copy dependencies from deps stage
-COPY --from=deps /app/node_modules ./node_modules
+# Build
 COPY . .
-
-# Set environment to production
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
-
-# Build the application
 RUN pnpm build
 
-# Production stage
-FROM base AS runner
-WORKDIR /app
+# Copy POS UI (built separately by BevOne deployment)
+COPY static/ ./static/
 
-ENV NODE_ENV=production
-ENV NEXT_TELEMETRY_DISABLED=1
+HEALTHCHECK --interval=30s --timeout=10s CMD curl -f http://localhost:8080/health || exit 1
 
-# Create non-root user
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+EXPOSE 8080
 
-# Copy necessary files
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
-
-# Set correct permissions
-RUN chown -R nextjs:nodejs /app
-
-# Switch to non-root user
-USER nextjs
-
-# Expose port
-EXPOSE 3000
-
-ENV PORT=3000
-ENV HOSTNAME="0.0.0.0"
-
-# Start the application
-CMD ["node", "server.js"]
+CMD ["node", "dist/server/index.js"]

@@ -32,9 +32,8 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# Convex
-.convex/
-convex/_generated/
+# BevOne
+static/
 
 # IDE
 .vscode/
