@@ -17,6 +17,10 @@
       "@/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts"],
+  "include": [
+    "src/agent/**/*.ts",
+    "src/server/**/*.ts",
+    "src/lib/bevone/**/*.ts"
+  ],
   "exclude": ["node_modules", "dist"]
 }

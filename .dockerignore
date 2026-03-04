@@ -32,10 +32,6 @@ dist
 # Vercel
 .vercel
 
-# Convex
-.convex
-convex/_generated
-
 # IDE
 .vscode
 .idea

@@ -1,40 +1,45 @@
-import { auth } from "@clerk/nextjs";
 import { NextResponse } from "next/server";
+import { deploymentService } from "@/lib/deployment-service";
 
 export async function POST(req: Request) {
   try {
-    const { userId } = auth();
+    const body = await req.json();
+    const { appConfig } = body;
 
-    if (!userId) {
-      return new NextResponse("Unauthorized", { status: 401 });
+    if (!appConfig || !appConfig.id) {
+      return NextResponse.json(
+        { error: "Missing appConfig with id" },
+        { status: 400 }
+      );
     }
 
-    const convexToken = process.env.CONVEX_TEAM_ACCESS_TOKEN;
-    const vercelHookUrl = process.env.VERCEL_DEPLOY_HOOK_URL;
-
-    if (!convexToken || !vercelHookUrl) {
-      return new NextResponse("Missing deployment configuration", { status: 500 });
+    const vercelToken = process.env.VERCEL_TOKEN;
+    if (!vercelToken) {
+      return NextResponse.json(
+        { error: "Missing deployment configuration (VERCEL_TOKEN)" },
+        { status: 500 }
+      );
     }
 
-    // TODO: Implement Convex deployment logic using the Management API
+    const result = await deploymentService.deployToVercel({ appConfig });
 
-    const vercelResponse = await fetch(vercelHookUrl, {
-      method: "POST",
+    if (!result.success) {
+      return NextResponse.json(
+        { error: result.error },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({
+      message: "Deployment triggered successfully",
+      url: result.url,
+      deploymentId: result.deploymentId,
     });
-
-    if (!vercelResponse.ok) {
-      const errorBody = await vercelResponse.text();
-      console.error("Vercel deployment error:", errorBody);
-      return new NextResponse("Failed to trigger Vercel deployment", { status: 500 });
-    }
-
-    const responseData = await vercelResponse.json();
-    console.log("Vercel deployment triggered:", responseData);
-
-    return NextResponse.json({ message: "Deployment triggered successfully", vercel: responseData });
-
   } catch (error) {
     console.error("[DEPLOY_POST]", error);
-    return new NextResponse("Internal Error", { status: 500 });
+    return NextResponse.json(
+      { error: "Internal Error" },
+      { status: 500 }
+    );
   }
 }
