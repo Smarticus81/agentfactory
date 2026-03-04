@@ -12,6 +12,7 @@
     { "source": "/health", "destination": "/api/health" },
     { "source": "/api/livekit-token", "destination": "/api/livekit-token" },
     { "source": "/api/pos/:path*", "destination": "/api/pos" },
+    { "source": "/", "destination": "/api/index" },
     { "source": "/:path*", "destination": "/api/index" }
   ]
 }
