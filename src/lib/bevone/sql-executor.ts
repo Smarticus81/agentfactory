@@ -1,5 +1,5 @@
 import { Pool } from "pg";
-import type { ConnectionConfig, ToolConfig } from "./config";
+import type { ConnectionConfig, ToolConfig } from "./config.js";
 
 let pool: Pool | null = null;
 

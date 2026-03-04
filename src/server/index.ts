@@ -1,9 +1,9 @@
 import http from "http";
 import { spawn, type ChildProcess } from "child_process";
-import { loadAppConfig, type AppConfig } from "../lib/bevone/config";
-import { executeTool } from "../lib/bevone/sql-executor";
-import { serveStatic } from "./static";
-import { generateLiveKitToken } from "./livekit-token";
+import { loadAppConfig, type AppConfig } from "../lib/bevone/config.js";
+import { executeTool } from "../lib/bevone/sql-executor.js";
+import { serveStatic } from "./static.js";
+import { generateLiveKitToken } from "./livekit-token.js";
 
 const PORT = parseInt(process.env.PORT || "8080");
 

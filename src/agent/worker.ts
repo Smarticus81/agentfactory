@@ -4,16 +4,15 @@ import {
   WorkerOptions,
   cli,
   defineAgent,
-  llm,
   voice,
 } from "@livekit/agents";
 import * as openai from "@livekit/agents-plugin-openai";
 import * as deepgram from "@livekit/agents-plugin-deepgram";
 import * as silero from "@livekit/agents-plugin-silero";
 
-import { loadAppConfig, type AppConfig } from "../lib/bevone/config";
-import { createTools } from "../lib/bevone/tool-factory";
-import { initPool, closePool } from "../lib/bevone/sql-executor";
+import { loadAppConfig, type AppConfig } from "../lib/bevone/config.js";
+import { createTools } from "../lib/bevone/tool-factory.js";
+import { initPool, closePool } from "../lib/bevone/sql-executor.js";
 
 let appConfig: AppConfig;
 
@@ -39,32 +38,28 @@ export default defineAgent({
     // Build system prompt
     const systemPrompt = buildSystemPrompt(appConfig);
 
-    // Create voice agent
+    // Create voice agent with STT/LLM/TTS/VAD config
     const agent = new voice.Agent({
       instructions: systemPrompt,
       tools,
+      stt: new deepgram.STT(),
+      llm: new openai.LLM({ model: "gpt-4o-mini" }),
+      tts: new openai.TTS({ voice: appConfig.voice.voiceId as any }),
+      vad: ctx.proc.userData.vad as silero.VAD,
+      turnDetection: "vad",
     });
 
-    // Configure voice session
-    const session = new voice.AgentSession({
-      stt: deepgram.STT(),
-      llm: openai.LLM({ model: "gpt-4o-mini" }),
-      tts: openai.TTS({ voice: appConfig.voice.voiceId as any }),
-      vad: ctx.proc.userData.vad,
-      turnDetection: voice.turnDetection.livekit(),
-    });
+    // Create voice session
+    const session = new voice.AgentSession({});
 
     // Connect to room
     await ctx.connect();
 
-    // Start session
-    session.start(ctx.room);
+    // Start session with agent and room
+    await session.start({ agent, room: ctx.room });
 
     // Say greeting
-    await session.say(appConfig.voice.greeting);
-
-    // Wait for end
-    await session.wait();
+    session.say(appConfig.voice.greeting);
   },
 });
 

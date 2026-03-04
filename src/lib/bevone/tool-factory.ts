@@ -1,6 +1,6 @@
 import { z } from "zod";
-import type { ToolConfig, AppConfig } from "./config";
-import { executeTool } from "./sql-executor";
+import type { ToolConfig, AppConfig } from "./config.js";
+import { executeTool } from "./sql-executor.js";
 
 /**
  * Converts BevOne tool configs into LiveKit Agent tools
