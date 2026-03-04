@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "buildCommand": "pnpm build",
+  "installCommand": "pnpm install",
+  "framework": null,
+  "functions": {
+    "api/*.ts": {
+      "maxDuration": 60
+    }
+  },
+  "rewrites": [
+    { "source": "/health", "destination": "/api/health" },
+    { "source": "/api/livekit-token", "destination": "/api/livekit-token" },
+    { "source": "/api/pos/:path*", "destination": "/api/pos" },
+    { "source": "/:path*", "destination": "/api/index" }
+  ]
+}

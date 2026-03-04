@@ -3,9 +3,8 @@ const nextConfig = {
   output: 'standalone',
   experimental: {
     esmExternals: 'loose',
-    serverComponentsExternalPackages: ['pdf-parse', 'mammoth']
+    serverComponentsExternalPackages: ['pg']
   },
-  transpilePackages: ['pdf-parse'],
   webpack: (config, { isServer }) => {
     config.resolve.fallback = {
       ...config.resolve.fallback,
